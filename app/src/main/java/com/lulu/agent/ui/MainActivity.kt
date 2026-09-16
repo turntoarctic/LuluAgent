@@ -31,6 +31,7 @@ import com.lulu.agent.dispatcher.fsm.EngineState
 import com.lulu.agent.floating.FloatingHUDService
 import com.lulu.agent.ui.dashboard.HistoryRecordActivity
 import com.lulu.agent.ui.settings.ApiKeyConfigActivity
+import com.lulu.agent.ui.settings.FilterSettingsActivity
 import com.lulu.agent.ui.settings.ResumeEditorActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -822,6 +823,9 @@ class MainActivity : AppCompatActivity() {
         })
         container.addView(createSettingItem("📝", "个人简历与背景设定") {
             startActivity(Intent(this, ResumeEditorActivity::class.java))
+        })
+        container.addView(createSettingItem("🎚️", "筛选与评分策略") {
+            startActivity(Intent(this, FilterSettingsActivity::class.java))
         })
         container.addView(createSettingItem("🔋", "忽略电池优化 (防断流)") {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

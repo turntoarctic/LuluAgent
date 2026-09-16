@@ -41,17 +41,25 @@ interface JobDao {
     suspend fun updateStatus(jobId: String, status: String, updatedAt: Long = System.currentTimeMillis())
 
     @Query("""
-        UPDATE jobs 
-        SET match_score = :score, 
-            eval_reason = :reason, 
-            suggested_greeting = :greeting, 
-            status = :status, 
-            updated_at = :updatedAt 
+        UPDATE jobs
+        SET match_score = :score,
+            tech_score = :techScore,
+            experience_score = :experienceScore,
+            salary_score = :salaryScore,
+            stability_score = :stabilityScore,
+            eval_reason = :reason,
+            suggested_greeting = :greeting,
+            status = :status,
+            updated_at = :updatedAt
         WHERE job_id = :jobId
     """)
     suspend fun updateEvaluationResult(
         jobId: String,
         score: Int,
+        techScore: Int,
+        experienceScore: Int,
+        salaryScore: Int,
+        stabilityScore: Int,
         reason: String,
         greeting: String,
         status: String,

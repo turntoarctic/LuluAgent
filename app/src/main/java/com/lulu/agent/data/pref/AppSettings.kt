@@ -41,6 +41,28 @@ class AppSettings(context: Context) {
     fun isFilterOutsourcing(): Boolean = prefs.getBoolean(KEY_FILTER_OUTSOURCING, true)
     fun setFilterOutsourcing(filter: Boolean) = prefs.edit().putBoolean(KEY_FILTER_OUTSOURCING, filter).apply()
 
+    /**
+     * 综合评分录取阈值 (40~90)：最终得分达到该值才会发起打招呼
+     */
+    fun getMatchScoreThreshold(): Int =
+        prefs.getInt(KEY_MATCH_SCORE_THRESHOLD, DEFAULT_MATCH_SCORE_THRESHOLD).coerceIn(40, 90)
+
+    fun setMatchScoreThreshold(threshold: Int) {
+        prefs.edit().putInt(KEY_MATCH_SCORE_THRESHOLD, threshold.coerceIn(40, 90)).apply()
+    }
+
+    /**
+     * 评分偏好模式：决定四维分数加权合成的权重配比
+     */
+    fun getScorePreference(): String = prefs.getString(KEY_SCORE_PREFERENCE, SCORE_PREF_BALANCED) ?: SCORE_PREF_BALANCED
+    fun setScorePreference(preference: String) = prefs.edit().putString(KEY_SCORE_PREFERENCE, preference).apply()
+
+    /**
+     * 用户自定义排除关键词原文 (逗号/顿号/分号分隔)
+     */
+    fun getExcludeKeywords(): String = prefs.getString(KEY_EXCLUDE_KEYWORDS, "") ?: ""
+    fun setExcludeKeywords(keywords: String) = prefs.edit().putString(KEY_EXCLUDE_KEYWORDS, keywords.trim()).apply()
+
     fun isPaused(): Boolean = prefs.getBoolean(KEY_IS_PAUSED, false)
     fun setPaused(paused: Boolean) = prefs.edit().putBoolean(KEY_IS_PAUSED, paused).apply()
 
@@ -51,6 +73,17 @@ class AppSettings(context: Context) {
         private const val KEY_MIN_SALARY_K = "min_salary_k"
         private const val KEY_FILTER_OUTSOURCING = "filter_outsourcing"
         private const val KEY_IS_PAUSED = "isPause"
+        private const val KEY_MATCH_SCORE_THRESHOLD = "match_score_threshold"
+        private const val KEY_SCORE_PREFERENCE = "score_preference"
+        private const val KEY_EXCLUDE_KEYWORDS = "exclude_keywords"
+
+        const val DEFAULT_MATCH_SCORE_THRESHOLD = 70
+
+        // 评分偏好模式常量
+        const val SCORE_PREF_BALANCED = "均衡"
+        const val SCORE_PREF_TECH_FIRST = "技术优先"
+        const val SCORE_PREF_SALARY_FIRST = "薪资优先"
+        const val SCORE_PREF_STABILITY_FIRST = "稳字当先"
 
         @Volatile
         private var instance: AppSettings? = null

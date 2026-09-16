@@ -57,8 +57,16 @@ class EvaluatorAgent(
         val llmResult = deepSeekClient.evaluateJob(rawJob)
 
         return llmResult.fold(
-            onSuccess = { response ->
-                val result = EvaluatorResult.fromLLMResponse(rawJob, response, scoreThreshold = 70)
+            onSuccess = { rawResponse ->
+                // 0. 清洗 LLM 输出的越界分数
+                val response = rawResponse.sanitized()
+
+                // 1. 四维加权合成综合分 (用户偏好权重 + HR 高活跃本地加分)
+                val weights = ScorePolicy.weightsFor(configRepository.getScorePreference())
+                val hrBonus = localPreFilter.computeHrActivityBonus(rawJob.hrActiveStatus)
+                val compositeScore = ScorePolicy.composeFinalScore(response, weights, hrBonus)
+                val threshold = configRepository.getMatchScoreThreshold()
+                val result = EvaluatorResult.fromLLMResponse(rawJob, response, compositeScore, threshold)
 
                 val status = if (result.isApproved) JobEntity.STATUS_EVALUATED else JobEntity.STATUS_REJECTED
                 jobRepository.saveEvaluationResult(
@@ -66,13 +74,21 @@ class EvaluatorAgent(
                     score = result.matchScore,
                     reason = result.summaryReason,
                     suggestedGreeting = "",
-                    status = status
+                    status = status,
+                    techScore = response.techMatch,
+                    experienceScore = response.experienceMatch,
+                    salaryScore = response.salaryMatch,
+                    stabilityScore = response.stability
                 )
 
+                val dimsText = if (response.hasFullDimensions()) {
+                    val bonusText = if (hrBonus > 0) " +活跃${hrBonus}" else ""
+                    " (技${response.techMatch}·验${response.experienceMatch}·薪${response.salaryMatch}·稳${response.stability}$bonusText)"
+                } else ""
                 val logText = if (result.isApproved) {
-                    "🎯 评估通过！得分: ${result.matchScore}分 | ${result.summaryReason}"
+                    "🎯 评估通过！综合${result.matchScore}分$dimsText | ${result.summaryReason}"
                 } else {
-                    "⚠️ 评估放弃。得分: ${result.matchScore}分 | 原因: ${result.summaryReason}"
+                    "⚠️ 评估放弃。综合${result.matchScore}分$dimsText | 原因: ${result.summaryReason}"
                 }
                 sendAgentLog(logText, isHighlight = result.isApproved)
 

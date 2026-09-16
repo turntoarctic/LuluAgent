@@ -26,6 +26,15 @@ class ConfigRepository(
     fun isFilterOutsourcing(): Boolean = appSettings.isFilterOutsourcing()
     fun setFilterOutsourcing(filter: Boolean) = appSettings.setFilterOutsourcing(filter)
 
+    fun getMatchScoreThreshold(): Int = appSettings.getMatchScoreThreshold()
+    fun setMatchScoreThreshold(threshold: Int) = appSettings.setMatchScoreThreshold(threshold)
+
+    fun getScorePreference(): String = appSettings.getScorePreference()
+    fun setScorePreference(preference: String) = appSettings.setScorePreference(preference)
+
+    fun getExcludeKeywords(): String = appSettings.getExcludeKeywords()
+    fun setExcludeKeywords(keywords: String) = appSettings.setExcludeKeywords(keywords)
+
     fun isPaused(): Boolean = appSettings.isPaused()
     fun setPaused(paused: Boolean) = appSettings.setPaused(paused)
 }

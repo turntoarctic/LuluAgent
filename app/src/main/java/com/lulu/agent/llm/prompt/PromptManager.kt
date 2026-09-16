@@ -27,7 +27,8 @@ class PromptManager(
             jobTitle = rawJob.title,
             companyName = rawJob.companyName,
             salaryText = rawJob.salaryText,
-            jobDescription = rawJob.jobDescription
+            jobDescription = rawJob.jobDescription,
+            expectedMinSalaryK = configRepository.getMinSalaryFilterK()
         )
 
         return DeepSeekChatRequest.buildJsonRequest(

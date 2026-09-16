@@ -51,6 +51,16 @@ class LocalPreFilter(
             }
         }
 
+        // 2.5 用户自定义排除关键词过滤 (如 "996"、"销售驻点" 等私人雷区)
+        val customKeywords = parseKeywordList(configRepository.getExcludeKeywords())
+        if (customKeywords.isNotEmpty()) {
+            val hitKeyword = customKeywords.firstOrNull { "$company $title $jd".contains(it) }
+            if (hitKeyword != null) {
+                Log.d(tag, "拦截：命中自定义排除词 [$hitKeyword]")
+                return FilterResult.Reject("命中自定义排除关键词: $hitKeyword")
+            }
+        }
+
         // 3. 期望薪资下限校验
         val minSalaryK = configRepository.getMinSalaryFilterK()
         if (minSalaryK > 0) {
@@ -79,5 +89,27 @@ class LocalPreFilter(
             }
         }
         return null
+    }
+
+    /**
+     * 解析用户自定义排除关键词原文 (支持逗号/顿号/分号/换行分隔)
+     */
+    fun parseKeywordList(raw: String): List<String> {
+        return raw.split(',', '，', '、', ';', '；', '\n')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    }
+
+    /**
+     * HR 高活跃度本地加分信号：刚刚/在线/今日活跃 +2 分，其余 0 分
+     * (长期失联岗位已在 check() 中硬过滤，此处只做正向激励)
+     */
+    fun computeHrActivityBonus(hrActiveStatus: String): Int {
+        return when {
+            hrActiveStatus.contains("刚刚") ||
+                hrActiveStatus.contains("在线") ||
+                hrActiveStatus.contains("今日") -> 2
+            else -> 0
+        }
     }
 }

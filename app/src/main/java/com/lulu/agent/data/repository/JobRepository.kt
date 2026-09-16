@@ -41,11 +41,19 @@ class JobRepository(private val db: AppDatabase) {
         score: Int,
         reason: String,
         suggestedGreeting: String,
-        status: String
+        status: String,
+        techScore: Int = -1,
+        experienceScore: Int = -1,
+        salaryScore: Int = -1,
+        stabilityScore: Int = -1
     ) = withContext(Dispatchers.IO) {
         jobDao.updateEvaluationResult(
             jobId = jobId,
             score = score,
+            techScore = techScore,
+            experienceScore = experienceScore,
+            salaryScore = salaryScore,
+            stabilityScore = stabilityScore,
             reason = reason,
             greeting = suggestedGreeting,
             status = status

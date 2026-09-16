@@ -54,6 +54,19 @@ data class JobEntity(
     @ColumnInfo(name = "match_score")
     val matchScore: Int = -1,
 
+    // 四维评分明细 (-1 = 未评估，如本地过滤/旧数据)
+    @ColumnInfo(name = "tech_score")
+    val techScore: Int = -1,
+
+    @ColumnInfo(name = "experience_score")
+    val experienceScore: Int = -1,
+
+    @ColumnInfo(name = "salary_score")
+    val salaryScore: Int = -1,
+
+    @ColumnInfo(name = "stability_score")
+    val stabilityScore: Int = -1,
+
     @ColumnInfo(name = "eval_reason")
     val evalReason: String = "",
 

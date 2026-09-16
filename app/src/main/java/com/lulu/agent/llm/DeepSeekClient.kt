@@ -75,10 +75,8 @@ class DeepSeekClient(
      * 评估岗位契合度（包含缓存拦截、预算校验、3次重试与审计日志）
      */
     suspend fun evaluateJob(rawJob: ScrapedRawJob): Result<JDEvalResponse> {
-        val jdText = rawJob.jobDescription
-
-        // 1. 指纹缓存前置拦截 (0 Token 消耗)
-        val cached = DeduplicationCache.getCachedEvaluation(jdText)
+        // 1. 指纹缓存前置拦截 (0 Token 消耗) —— 指纹含 标题+公司+薪资+JD，避免同 JD 不同岗位误复用
+        val cached = DeduplicationCache.getCachedEvaluation(rawJob)
         if (cached != null) {
             Log.i(tag, "🎯 命中内存指纹缓存，复用前序评估结果: ${cached.matchScore}分")
             return Result.success(cached)
@@ -116,7 +114,7 @@ class DeepSeekClient(
                     val evalResponse = gson.fromJson(cleanJson, JDEvalResponse::class.java)
 
                     // 写入指纹缓存
-                    DeduplicationCache.putEvaluation(jdText, evalResponse)
+                    DeduplicationCache.putEvaluation(rawJob, evalResponse)
 
                     // 记录 Token 与数据库审计流水
                     tokenUsageTracker.recordTokens(promptTokens, completionTokens)

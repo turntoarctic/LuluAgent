@@ -9,10 +9,10 @@
     <!-- 基础网络权限 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    
+
     <!-- 悬浮窗权限 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    
+
     <!-- 前台服务与电池白名单权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
@@ -49,6 +49,12 @@
             android:exported="false"
             android:label="个人简历与背景设定" />
 
+        <!-- 筛选与评分策略配置页 -->
+        <activity
+            android:name=".ui.settings.FilterSettingsActivity"
+            android:exported="false"
+            android:label="筛选与评分策略" />
+
         <!-- 投递与评估历史看板 -->
         <activity
             android:name=".ui.dashboard.HistoryRecordActivity"
@@ -80,4 +86,5 @@
         </service>
 
     </application>
+
 </manifest>

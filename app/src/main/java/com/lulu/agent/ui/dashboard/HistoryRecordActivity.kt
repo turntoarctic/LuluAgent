@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.lulu.agent.data.local.AppDatabase
 import com.lulu.agent.data.local.entity.JobEntity
+import com.lulu.agent.data.pref.AppSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -193,6 +194,7 @@ class HistoryRecordActivity : AppCompatActivity() {
             val companyTv: TextView = view.findViewWithTag("company")
             val statusChip: TextView = view.findViewWithTag("status")
             val reasonTv: TextView = view.findViewWithTag("reason")
+            val dimsTv: TextView = view.findViewWithTag("dims")
             val scoreTv: TextView = view.findViewWithTag("score")
             val timeTv: TextView = view.findViewWithTag("time")
         }
@@ -293,6 +295,20 @@ class HistoryRecordActivity : AppCompatActivity() {
                 includeFontPadding = false
             }
             bubble.addView(reason)
+
+            // 四维评分明细 (多维评分体系，未评估时不展示)
+            val dims = TextView(parent.context).apply {
+                tag = "dims"
+                textSize = 11f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.parseColor("#2E7BE6"))
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(6) }
+            }
+            bubble.addView(dims)
             card.addView(bubble)
 
             // 第四行：时间 + 契合度徽章
@@ -374,19 +390,32 @@ class HistoryRecordActivity : AppCompatActivity() {
             val cleanReason = item.evalReason.ifBlank { "正在分析岗位的契合度与潜在风险..." }
             holder.reasonTv.text = "🦌 鹿鹿评语：$cleanReason"
 
-            // 契合度得分胶囊
-            if (item.matchScore >= 70) {
+            // 契合度得分胶囊 (达标色随用户配置的录取阈值联动)
+            val threshold = AppSettings.getInstance(holder.itemView.context).getMatchScoreThreshold()
+            if (item.matchScore >= 0) {
                 holder.scoreTv.text = "契合度: ${item.matchScore}分"
-                holder.scoreTv.setTextColor(Color.parseColor("#2BA471"))
-                holder.scoreTv.background = getPillDrawable("#EBF6F1")
-            } else if (item.matchScore in 0..69) {
-                holder.scoreTv.text = "契合度: ${item.matchScore}分"
-                holder.scoreTv.setTextColor(Color.parseColor("#8F959E"))
-                holder.scoreTv.background = getPillDrawable("#F0F2F5")
+                if (item.matchScore >= threshold) {
+                    holder.scoreTv.setTextColor(Color.parseColor("#2BA471"))
+                    holder.scoreTv.background = getPillDrawable("#EBF6F1")
+                } else {
+                    holder.scoreTv.setTextColor(Color.parseColor("#8F959E"))
+                    holder.scoreTv.background = getPillDrawable("#F0F2F5")
+                }
             } else {
                 holder.scoreTv.text = "契合度: --"
                 holder.scoreTv.setTextColor(colorTextSub)
                 holder.scoreTv.background = null
+            }
+
+            // 四维评分明细
+            if (item.techScore >= 0 && item.experienceScore >= 0 &&
+                item.salaryScore >= 0 && item.stabilityScore >= 0
+            ) {
+                holder.dimsTv.visibility = View.VISIBLE
+                holder.dimsTv.text =
+                    "技${item.techScore} · 验${item.experienceScore} · 薪${item.salaryScore} · 稳${item.stabilityScore}"
+            } else {
+                holder.dimsTv.visibility = View.GONE
             }
 
             val sdf = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
