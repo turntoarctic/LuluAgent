@@ -8,6 +8,22 @@ android {
     namespace = "com.lulu.agent"
     compileSdk = 34
 
+    // 正式签名配置：根目录存在 lulu-release.keystore 且注入了密码 (CI Secret) 时启用，
+    // 否则保持 unsigned，不影响本地无密钥环境的日常构建
+    val releaseKeystoreFile = rootProject.file("lulu-release.keystore")
+    val releaseKeystorePassword: String = System.getenv("KEYSTORE_PASSWORD") ?: ""
+
+    signingConfigs {
+        create("release") {
+            if (releaseKeystoreFile.exists() && releaseKeystorePassword.isNotEmpty()) {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseKeystorePassword
+                keyAlias = System.getenv("KEY_ALIAS") ?: "lulu"
+                keyPassword = releaseKeystorePassword
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.lulu.agent"
         minSdk = 26
@@ -22,6 +38,9 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (releaseKeystoreFile.exists() && releaseKeystorePassword.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {

@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build Debug APK
+    name: Build APKs
     runs-on: ubuntu-latest
 
     steps:
@@ -28,13 +28,22 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+      # 从 Secret 解出正式签名证书 (缺失时 assembleRelease 自动降级为 unsigned，不阻断)
+      - name: Decode Release Keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > lulu-release.keystore
 
-      - name: Upload APK Artifact
+      - name: Build Debug & Release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: lulu
+        run: gradle assembleDebug assembleRelease --no-daemon --stacktrace
+
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: LuluAgent-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: LuluAgent-apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
