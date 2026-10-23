@@ -615,20 +615,127 @@ class MainActivity : AppCompatActivity() {
     private fun buildRecordsPage(): View {
         val container = FrameLayout(this).apply {
             setBackgroundColor(colorBg)
-            val p = dp2px(4)
-            setPadding(dp2px(16), p, dp2px(16), dp2px(12))
+            setPadding(dp2px(16), dp2px(4), dp2px(16), dp2px(12))
         }
 
-        recordsRecyclerView = RecyclerView(this).apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = recordsAdapter
-            clipToPadding = false
-            overScrollMode = View.OVER_SCROLL_NEVER
+        val pageColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
         }
+
+        // 统计行 + 导出按钮
+        val toolbarRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(6) }
+        }
+        weekStatsTv = TextView(this).apply {
+            text = "近 7 天：沟通 0 · 投递 0"
+            textSize = 12f
+            setTextColor(colorTextSub)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        toolbarRow.addView(weekStatsTv)
+        toolbarRow.addView(TextView(this).apply {
+            text = "导出 Markdown"
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorPrimary)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            background = GradientDrawable().apply {
+                cornerRadius = dp2px(100).toFloat()
+                setColor(colorPrimarySoft)
+            }
+            setPadding(dp2px(12), dp2px(6), dp2px(12), dp2px(6))
+            setOnClickListener { exportRecordsToMarkdown() }
+        })
+        pageColumn.addView(toolbarRow)
+
+        // 搜索框
+        recordsSearchInput = EditText(this).apply {
+            hint = "搜索职位或公司"
+            setHintTextColor(colorTextSub)
+            textSize = 13f
+            setTextColor(colorTextMain)
+            singleLine = true
+            background = GradientDrawable().apply {
+                cornerRadius = dp2px(10).toFloat()
+                setColor(Color.WHITE)
+                setStroke(dp2px(1), colorCardStroke)
+            }
+            val ep = dp2px(12)
+            setPadding(ep, dp2px(9), ep, dp2px(9))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(10) }
+            addTextChangedListener(object : TextWatcher {
+                override fun afterTextChanged(editable: Editable?) = applyRecordFilters()
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            })
+        }
+        pageColumn.addView(recordsSearchInput)
+
+        // 状态筛选 chips
+        filterChipsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(10) }
+        }
+        statusFilters.forEachIndexed { index, label ->
+            filterChipsRow.addView(TextView(this).apply {
+                text = label
+                textSize = 11f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                setPadding(dp2px(12), dp2px(6), dp2px(12), dp2px(6))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = dp2px(8) }
+                setOnClickListener {
+                    selectedFilterIndex = index
+                    refreshFilterChips()
+                    applyRecordFilters()
+                }
+            })
+        }
+        refreshFilterChips()
+        val chipsScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(filterChipsRow)
+        }
+        pageColumn.addView(chipsScroll)
+
+        // 列表
+        recordsRecyclerView = RecyclerView(this).apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = recordsAdapter
+            clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = dp2px(10)
+                weight = 1f
+                height = 0
+            }
+        }
+        pageColumn.addView(recordsRecyclerView)
+        container.addView(pageColumn)
 
         recordsEmptyTv = TextView(this).apply {
             text ="还没有投递记录\n启动求职搭子后，每一次沟通与评估都会记录在这里"
@@ -642,10 +749,117 @@ class MainActivity : AppCompatActivity() {
                 Gravity.CENTER
             )
         }
-
-        container.addView(recordsRecyclerView)
         container.addView(recordsEmptyTv)
         return container
+    }
+
+    private fun refreshFilterChips() {
+        statusFilters.forEachIndexed { index, _ ->
+            val chip = filterChipsRow.getChildAt(index) as? TextView ?: return@forEachIndexed
+            val selected = index == selectedFilterIndex
+            chip.setTextColor(if (selected) Color.WHITE else colorTextSub)
+            chip.background = GradientDrawable().apply {
+                cornerRadius = dp2px(100).toFloat()
+                setColor(if (selected) colorPrimary else colorCard)
+                setStroke(dp2px(1), if (selected) colorPrimary else colorCardStroke)
+            }
+        }
+    }
+
+    /** 状态筛选 + 关键字搜索的组合过滤 (内存执行，数据量小) */
+    private fun applyRecordFilters() {
+        val keyword = recordsSearchInput.text.toString().trim()
+        val statusFilter = statusFilters.getOrNull(selectedFilterIndex)
+
+        recordsFiltered.clear()
+        records.filterTo(recordsFiltered) { item ->
+            val statusOk = when (statusFilter) {
+                "已投递" -> item.status == JobEntity.STATUS_DELIVERED
+                "已打招呼" -> item.status == JobEntity.STATUS_COMMUNICATED
+                "契合度高" -> item.status == JobEntity.STATUS_EVALUATED
+                "已跳过" -> item.status == JobEntity.STATUS_REJECTED
+                "规则过滤" -> item.status == JobEntity.STATUS_FILTERED_OUT
+                else -> true
+            }
+            val keywordOk = keyword.isEmpty() ||
+                item.title.contains(keyword) || item.companyName.contains(keyword)
+            statusOk && keywordOk
+        }
+        recordsAdapter.notifyDataSetChanged()
+        recordsEmptyTv.visibility =
+            if (recordsFiltered.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun loadWeekStats() {
+        lifecycleScope.launch {
+            val (weekChat, weekDelivered) = withContext(Dispatchers.IO) {
+                val end = System.currentTimeMillis()
+                val start = end - 7L * 24 * 60 * 60 * 1000
+                val dao = AppDatabase.getInstance(this@MainActivity).jobDao()
+                Pair(
+                    dao.getCommunicatedCountBetween(start, end),
+                    dao.getDeliveredCountBetween(start, end)
+                )
+            }
+            weekStatsTv.text = "近 7 天：沟通 $weekChat · 投递 $weekDelivered"
+        }
+    }
+
+    /**
+     * 导出手账为 Markdown 文件并通过系统分享面板发出 (微信/保存到文件等)
+     */
+    private fun exportRecordsToMarkdown() {
+        if (records.isEmpty()) {
+            Toast.makeText(this, "暂无记录可导出", Toast.LENGTH_SHORT).show()
+            return
+        }
+        lifecycleScope.launch {
+            val markdown = withContext(Dispatchers.IO) {
+                buildExportMarkdown(records)
+            }
+            runCatching {
+                val dir = java.io.File(cacheDir, "exports").apply { mkdirs() }
+                val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.getDefault()).format(Date())
+                val file = java.io.File(dir, "求职搭子-投递手账-$stamp.md")
+                file.writeText(markdown)
+
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    this@MainActivity,
+                    "$packageName.fileprovider",
+                    file
+                )
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/markdown"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(shareIntent, "分享投递手账"))
+            }.onFailure {
+                Toast.makeText(this@MainActivity, "导出失败：${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun buildExportMarkdown(items: List<JobEntity>): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val sb = StringBuilder()
+        sb.append("# 求职搭子 · 投递手账导出\n\n")
+        sb.append("> 导出时间：${sdf.format(Date())} · 共 ${items.size} 条记录\n\n")
+        items.forEachIndexed { index, item ->
+            sb.append("## ${index + 1}. ${item.title}\n")
+            sb.append("- 公司：${item.companyName}${item.city.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""}\n")
+            if (item.salaryText.isNotBlank()) sb.append("- 薪资：${item.salaryText}\n")
+            sb.append("- 状态：${describeStatus(item.status)}\n")
+            if (item.matchScore >= 0) {
+                val dims = if (item.techScore >= 0 && item.experienceScore >= 0 &&
+                    item.salaryScore >= 0 && item.stabilityScore >= 0
+                ) "（技${item.techScore}·验${item.experienceScore}·薪${item.salaryScore}·稳${item.stabilityScore}）" else ""
+                sb.append("- 契合度：${item.matchScore} 分$dims\n")
+            }
+            if (item.evalReason.isNotBlank()) sb.append("- 搭子评语：${item.evalReason}\n")
+            sb.append("- 更新时间：${sdf.format(Date(item.updatedAt))}\n\n---\n\n")
+        }
+        return sb.toString()
     }
 
     private fun loadRecords() {
@@ -673,6 +887,8 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp2px(18), dp2px(6), dp2px(18), dp2px(24))
         }
 
+        page.addView(buildCostDashboardCard())
+
         val card = createCardContainer().apply {
             setPadding(dp2px(16), dp2px(6), dp2px(16), dp2px(6))
         }
@@ -681,25 +897,33 @@ class MainActivity : AppCompatActivity() {
             title ="DeepSeek API Key",
             desc ="配置智能研判引擎的密钥凭证",
             onClick = { startActivity(Intent(this, ApiKeyConfigActivity::class.java)) }
-        ))
+        ).first)
         card.addView(createCardDivider())
         card.addView(createSettingRow(
             title ="我的简历与背景",
             desc ="AI 会结合你的经历生成更懂你的破冰语",
             onClick = { startActivity(Intent(this, ResumeEditorActivity::class.java)) }
-        ))
+        ).first)
+        card.addView(createCardDivider())
+        val (styleRowView, styleDescRef) = createSettingRow(
+            title ="破冰语风格",
+            desc = currentGreetingStyleDesc(),
+            onClick = { showGreetingStyleDialog() }
+        )
+        styleDescTv = styleDescRef
+        card.addView(styleRowView)
         card.addView(createCardDivider())
         card.addView(createSettingRow(
             title ="筛选与评分策略",
             desc ="薪资下限、排除关键词与录取阈值随心调",
             onClick = { startActivity(Intent(this, FilterSettingsActivity::class.java)) }
-        ))
+        ).first)
         card.addView(createCardDivider())
         card.addView(createSettingRow(
             title ="忽略电池优化",
             desc ="防止后台任务被系统断流中断",
             onClick = { requestIgnoreBatteryOptimization() }
-        ))
+        ).first)
 
         page.addView(card)
         scrollView.addView(page)
@@ -732,7 +956,7 @@ class MainActivity : AppCompatActivity() {
             setTextColor(colorTextMain)
             includeFontPadding = false
         })
-        textCol.addView(TextView(this).apply {
+        val descTvRef = TextView(this).apply {
             text = desc
             textSize = 11f
             setTextColor(colorTextSub)
@@ -741,7 +965,8 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dp2px(3) }
-        })
+        }
+        textCol.addView(descTvRef)
 
         row.addView(textCol)
         row.addView(TextView(this).apply {
@@ -751,7 +976,7 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             includeFontPadding = false
         })
-        return row
+        return Pair(row, descTvRef)
     }
 
     // ==================== 设置页：成本仪表盘与破冰风格 ====================
