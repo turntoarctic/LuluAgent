@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(buildContentView())
+        updateTabStyles(TAB_HOME)
         registerStatusReceiver()
     }
 
@@ -235,6 +236,7 @@ class MainActivity : AppCompatActivity() {
                 textSize = 13f
                 gravity = Gravity.CENTER
                 includeFontPadding = false
+                setTextColor(colorTextSub)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -269,12 +271,17 @@ class MainActivity : AppCompatActivity() {
                 subtitleTv.text ="密钥、简历与策略，都在这里"
             }
         }
+        updateTabStyles(tabIndex)
+    }
+
+    /** 底部导航选中态：主色圆点 + 字色字重变化 */
+    private fun updateTabStyles(selected: Int) {
         tabViews.forEachIndexed { index, tab ->
-            val selected = index == tabIndex
+            val isSelected = index == selected
             val labelTv = tab.getChildAt(1) as TextView
-            labelTv.setTextColor(if (selected) colorPrimary else colorTextSub)
-            labelTv.typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            tab.getChildAt(0).visibility = if (selected) View.VISIBLE else View.INVISIBLE
+            labelTv.setTextColor(if (isSelected) colorPrimary else colorTextSub)
+            labelTv.typeface = if (isSelected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            tab.getChildAt(0).visibility = if (isSelected) View.VISIBLE else View.INVISIBLE
         }
     }
 
@@ -295,6 +302,7 @@ class MainActivity : AppCompatActivity() {
         contentLayout.addView(buildPreparednessCard())
         contentLayout.addView(buildRunningStatusCard())
         contentLayout.addView(buildDataDashboardCard())
+        contentLayout.addView(buildPrivacyNote())
 
         scrollView.addView(contentLayout)
         return scrollView
@@ -536,6 +544,22 @@ class MainActivity : AppCompatActivity() {
         card.addView(row)
 
         return card
+    }
+
+    /** 纯端侧隐私说明页脚 */
+    private fun buildPrivacyNote(): View {
+        return TextView(this).apply {
+            text = "本应用纯端侧运行：简历、API Key、浏览与投递记录均只存储在你的手机本地（加密保存），不经过也不上传任何第三方服务器，不收集任何个人信息。"
+            textSize = 11f
+            setTextColor(colorTextSub)
+            gravity = Gravity.CENTER
+            setLineSpacing(dp2px(3).toFloat(), 1.0f)
+            setPadding(dp2px(6), 0, dp2px(6), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(18) }
+        }
     }
 
     private fun createDataColumn(label: String): Pair<View, TextView> {
