@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lulu.agent"
+    namespace = "com.jobmate.app"
     compileSdk = 34
 
     // 正式签名配置：根目录存在 lulu-release.keystore 且注入了密码 (CI Secret) 时启用，
@@ -25,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.lulu.agent"
+        applicationId = "com.jobmate.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 3

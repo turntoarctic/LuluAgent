@@ -73,7 +73,7 @@
 求职搭子采用高内聚、低耦合的模块化分层架构，各智能体协同运作，由调度中枢与有限状态机（FSM）严格控制生命周期与自愈流程：
 
 ```text
-app/src/main/java/com/lulu/agent/
+app/src/main/java/com/jobmate/app/
 ├── accessibility/         // 【底层驱动层】DFS节点遍历即时回收 (防OOM)、贝塞尔拟人手势引擎
 ├── dispatcher/            // 【调度中枢层】有限状态机 (FSM)、广播解耦与事件契约、定向复位
 ├── agent/                 // 【多智能体集群】
