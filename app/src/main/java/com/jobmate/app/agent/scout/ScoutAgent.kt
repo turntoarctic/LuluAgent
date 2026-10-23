@@ -81,9 +81,9 @@ class ScoutAgent(context: Context) : BaseAgent(context, "侦察兵") {
 
                 if (title.isNotBlank() && company.isNotBlank()) {
                     anchors.add(CardAnchor(Rect(rect), title, company))
-                    Log.i(tag, "✅ 成功捕获卡片[$index] -> 职位:【$title】 公司:【$company】 坐标: $rect")
+                    Log.i(tag, "成功捕获卡片[$index] -> 职位:【$title】 公司:【$company】 坐标: $rect")
                 } else {
-                    Log.w(tag, "⚠️ 解析不全被跳过 -> Title: '$title', Company: '$company', 文字列表: ${leafNodes.map { it.text }}")
+                    Log.w(tag, "解析不全被跳过 -> Title: '$title', Company: '$company', 文字列表: ${leafNodes.map { it.text }}")
                 }
 
                 card.recycle()
@@ -191,7 +191,7 @@ class ScoutAgent(context: Context) : BaseAgent(context, "侦察兵") {
      * 诊断用：转储第一张卡片的结构到日志
      */
     private fun dumpCardInternals(leafs: List<LeafTextNode>) {
-        val sb = StringBuilder("\n===== 🎯 侦察兵实地采样：首张岗位卡片内部文字结构 =====\n")
+        val sb = StringBuilder("\n===== 侦察兵实地采样：首张岗位卡片内部文字结构 =====\n")
         leafs.forEachIndexed { i, leaf ->
             sb.append("[$i] id='${leaf.viewId}', text='${leaf.text}', bounds=${leaf.bounds.toShortString()}\n")
         }
@@ -241,7 +241,7 @@ class ScoutAgent(context: Context) : BaseAgent(context, "侦察兵") {
                 val finalJob = rawJob.copy(jobDescription = cleanedJd)
                 onSuccess(finalJob)
             },
-            onError = onFailed // 🌟【新增透传错误回调】
+            onError = onFailed // 【新增透传错误回调】
         )
         service.executeTask(task)
     }
@@ -260,8 +260,8 @@ class ScoutAgent(context: Context) : BaseAgent(context, "侦察兵") {
         sendAgentLog("当前屏幕已检索完毕，拟人化上滑加载新岗位...")
         val task = ScrollFeedTask(
             allowTabSwitch = allowTabSwitch,
-            onCompleted = onCompleted, // 🌟【新增透传成功回调】
-            onFailed = onFailed        // 🌟【新增透传失败回调】
+            onCompleted = onCompleted, // 【新增透传成功回调】
+            onFailed = onFailed // 【新增透传失败回调】
         )
         service.executeTask(task)
     }

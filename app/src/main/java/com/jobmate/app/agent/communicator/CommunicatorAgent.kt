@@ -23,7 +23,7 @@ class CommunicatorAgent(
 
     override fun start() {
         super.start()
-        sendAgentLog("🤝 谈判公关代表已就位，准备开展破冰沟通")
+        sendAgentLog("谈判公关代表已就位，准备开展破冰沟通")
     }
 
     /**
@@ -44,13 +44,13 @@ class CommunicatorAgent(
         val canGreet = jobRepository.canGreetMoreToday(maxDailyLimit)
         if (!canGreet) {
             val limitMsg = "今日主动沟通已达上限 ($maxDailyLimit 次)，启动防风控休眠"
-            sendAgentLog("🛑 $limitMsg", isHighlight = true)
+            sendAgentLog("$limitMsg", isHighlight = true)
             onFailed(limitMsg)
             return
         }
 
         // 2. 调用 DeepSeek 动态构思 50~90 字的针对性开场白
-        sendAgentLog("✍️ 正在让 DeepSeek 结合技术契合点构思破冰语...")
+        sendAgentLog("正在让 DeepSeek 结合技术契合点构思破冰语...")
         val greetingResult = deepSeekClient.generateGreeting(rawJob, evaluatorResult.highlights)
 
         val greetingText = greetingResult.fold(
@@ -64,18 +64,18 @@ class CommunicatorAgent(
             }
         )
 
-        sendAgentLog("💬 最终敲定问候语: $greetingText")
+        sendAgentLog("最终敲定问候语: $greetingText")
 
         // 3. 调度无障碍原子任务 SendGreetingTask 进行点击输入与发送
         val service = BossAccessibilityService.instance
         if (service == null) {
             val errMsg = "无障碍通道未连接，无法执行手势点击"
-            sendAgentLog("❌ $errMsg")
+            sendAgentLog("$errMsg")
             onFailed(errMsg)
             return
         }
 
-        sendAgentLog("▶️ 调度 SendGreetingTask 执行点击沟通与发送...")
+        sendAgentLog("调度 SendGreetingTask 执行点击沟通与发送...")
 
         // 使用协程 Deferred 真正等待任务完成
         val taskDeferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
@@ -94,13 +94,13 @@ class CommunicatorAgent(
 
         if (isTaskSuccess) {
             // 4. 只有真正送达了，才登记数据库
-            // 🌟【修改】：由 markJobCommunicated 改为 markJobDelivered，推进至已投递状态
+            // 【修改】：由 markJobCommunicated 改为 markJobDelivered，推进至已投递状态
             jobRepository.markJobDelivered(jobId)
             val todayTotal = jobRepository.getTodayCommunicatedCount()
-            sendAgentLog("🎉 已成功向【$company - $title】发起沟通并投递！今日累计: $todayTotal 次", isHighlight = true)
+            sendAgentLog("已成功向【$company - $title】发起沟通并投递！今日累计: $todayTotal 次", isHighlight = true)
             onSuccess()
         } else {
-            sendAgentLog("❌ 招呼语未能送达，取消本次履约登记")
+            sendAgentLog("招呼语未能送达，取消本次履约登记")
             onFailed("SendGreetingTask 执行失败")
         }
     }

@@ -61,7 +61,7 @@ class JobmateApp : Application() {
         initAgentCluster()
         initDispatcher()
 
-        Log.i(tag, "✅ JobmateApp 全系统依赖注入装配完成！")
+        Log.i(tag, "JobmateApp 全系统依赖注入装配完成！")
     }
 
     private fun initStorageLayer() {

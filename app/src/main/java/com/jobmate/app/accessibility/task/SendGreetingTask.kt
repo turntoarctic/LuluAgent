@@ -33,7 +33,7 @@ class SendGreetingTask(
         private const val STEP_VERIFY_AND_FINISH = 5
         private const val STEP_HANDLE_NAVIGATE_BACK = 6
 
-        // 🌟【新增】：设计基准分辨率 (1220 x 2712) 及基准偏移常量
+        // 【新增】：设计基准分辨率 (1220 x 2712) 及基准偏移常量
         private const val BASE_SCREEN_WIDTH = 1220f
         private const val BASE_SCREEN_HEIGHT = 2712f
         private const val BASE_OFFSET_X = 85f
@@ -234,7 +234,7 @@ class SendGreetingTask(
             return
         }
 
-        // 🌟【修改后】：获取屏幕真实物理尺寸，并基于 1220x2712 基准等比缩放
+        // 【修改后】：获取屏幕真实物理尺寸，并基于 1220x2712 基准等比缩放
         val screenBounds = AccessibilityNodeUtil.getScreenBounds(service)
         val screenWidth = if (screenBounds.width() > 0) screenBounds.width() else 1220
         val screenHeight = if (screenBounds.height() > 0) screenBounds.height() else 2712
@@ -254,7 +254,7 @@ class SendGreetingTask(
             editBounds.bottom - dynamicOffsetY
         }
 
-        sendTaskMessage("🎯 点击发送按钮 -> 标定坐标: ($targetX, $targetY) [第 $sendClickAttempts 次]")
+        sendTaskMessage("点击发送按钮 -> 标定坐标: ($targetX, $targetY) [第 $sendClickAttempts 次]")
         Log.i(tag, "执行精准发送点击: x=$targetX, y=$targetY")
 
         val clicked = GestureEngine.clickAt(
@@ -304,15 +304,15 @@ class SendGreetingTask(
 
         // 只要满足任意一项，均视为 100% 成功送达！
         if (isInputTextCleared || isMessageBubbleSent) {
-            sendTaskMessage("✉️ 消息确认已送达！")
-            Log.i(tag, "✅ 验证通过：破冰语已成功送出！")
+            sendTaskMessage("消息确认已送达！")
+            Log.i(tag, "验证通过：破冰语已成功送出！")
             nextStep(500L) // 确认送达，从容进入步骤 6 安全返回
         } else {
             if (sendClickAttempts < 3) {
-                Log.w(tag, "⚠️ 确实未检测到送达证据，重试点击发送 (尝试 $sendClickAttempts/3)...")
+                Log.w(tag, "确实未检测到送达证据，重试点击发送 (尝试 $sendClickAttempts/3)...")
                 sendStep(STEP_CLICK_SEND_BUTTON, 350L)
             } else {
-                Log.e(tag, "❌ 连续重试均未生效，判定发送失败")
+                Log.e(tag, "连续重试均未生效，判定发送失败")
                 failedTask("点击发送未生效，消息未送出")
             }
         }
@@ -320,7 +320,7 @@ class SendGreetingTask(
 
     private fun handleNavigateBack() {
         if (!autoNavigateBack) {
-            sendTaskMessage("🎉 打招呼闭环完成")
+            sendTaskMessage("打招呼闭环完成")
             finishTask()
             return
         }
@@ -363,7 +363,7 @@ class SendGreetingTask(
         onError?.invoke(reason)
     }
 
-    // 🌟【新增：被抢占强杀时释放 Deferred，防止 TaskDispatcher 死等】
+    // 【新增：被抢占强杀时释放 Deferred，防止 TaskDispatcher 死等】
     override fun onForceStopped() {
         onError?.invoke("打招呼任务被强制终止")
     }

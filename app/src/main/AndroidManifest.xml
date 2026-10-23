@@ -25,7 +25,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MaterialComponents.DayNight.DarkActionBar">
+        android:theme="@style/Theme.Jobmate">
 
         <!-- 宿主总控大厅 -->
         <activity
@@ -54,18 +54,6 @@
             android:name=".ui.settings.FilterSettingsActivity"
             android:exported="false"
             android:label="筛选与评分策略" />
-
-        <!-- 投递与评估历史看板 -->
-        <activity
-            android:name=".ui.dashboard.HistoryRecordActivity"
-            android:exported="false"
-            android:label="投递手账" />
-
-        <!-- 我的设置中心页 -->
-        <activity
-            android:name=".ui.settings.SettingsActivity"
-            android:exported="false"
-            android:label="我的设置" />
 
         <!-- 无障碍服务核心通道 -->
         <service

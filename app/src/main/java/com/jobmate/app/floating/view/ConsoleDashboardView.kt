@@ -66,8 +66,8 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f)
         }
 
-        val minimizeBtn = createIconButton("➖", "#3A3A40") { onMinimizeClicked?.invoke() }
-        val stopBtn = createIconButton("🛑", "#701A34") { onEmergencyStopClicked?.invoke() }
+        val minimizeBtn = createActionButton("收起", "#3A3A40") { onMinimizeClicked?.invoke() }
+        val stopBtn = createActionButton("停止", "#701A34") { onEmergencyStopClicked?.invoke() }
 
         header.addView(appTitle)
         header.addView(minimizeBtn)
@@ -126,7 +126,7 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         }
 
         val thoughtBadge = TextView(context).apply {
-            text = "🧠 DeepSeek 推理思考流:"
+            text = "DeepSeek 推理思考流:"
             textSize = 10f
             setTextColor(Color.parseColor("#B388FF"))
         }
@@ -154,7 +154,7 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         }
 
         pauseResumeBtn = TextView(context).apply {
-            text = "⏸️ 暂停"
+            text = "暂停"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
@@ -208,7 +208,7 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         targetTv.text = "当前岗位: ${state.currentTargetJob}"
         thoughtTv.text = state.deepSeekThought
 
-        pauseResumeBtn.text = if (state.isPaused) "▶️ 恢复执行" else "⏸️ 暂停"
+        pauseResumeBtn.text = if (state.isPaused) "恢复执行" else "暂停"
         pauseResumeBtn.background = GradientDrawable().apply {
             cornerRadius = dp2px(6).toFloat()
             setColor(if (state.isPaused) Color.parseColor("#43A047") else Color.parseColor("#3F51B5"))
@@ -220,10 +220,10 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         logScrollView.post { logScrollView.fullScroll(ScrollView.FOCUS_DOWN) }
     }
 
-    private fun createIconButton(iconText: String, bgHex: String, onClick: () -> Unit): TextView {
+    private fun createActionButton(label: String, bgHex: String, onClick: () -> Unit): TextView {
         return TextView(context).apply {
-            text = iconText
-            textSize = 12f
+            text = label
+            textSize = 10f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {

@@ -17,8 +17,8 @@ import java.util.concurrent.ThreadLocalRandom
  */
 class ScrollFeedTask(
     private val allowTabSwitch: Boolean = true,
-    private val onCompleted: (() -> Unit)? = null, // 🌟【新增完成回调】
-    private val onFailed: ((String) -> Unit)? = null  // 🌟【新增失败回调】
+    private val onCompleted: (() -> Unit)? = null, // 【新增完成回调】
+    private val onFailed: ((String) -> Unit)? = null // 【新增失败回调】
 ) : BaseAutomationTask() {
 
     // 用户可见的任务名 (HUD 日志与失败提示展示用)
@@ -92,13 +92,13 @@ class ScrollFeedTask(
 
             val targetNode = when {
                 isRecommendSelected -> latestNode // 当前在推荐 -> 切到最新
-                isLatestSelected -> recommendNode    // 当前在最新 -> 切到推荐
+                isLatestSelected -> recommendNode // 当前在最新 -> 切到推荐
                 else -> null
             }
 
             if (targetNode != null) {
                 val targetName = targetNode.text?.toString() ?: "目标Tab"
-                sendTaskMessage("🎲 触发策略：模拟手势切换到【$targetName】流")
+                sendTaskMessage("触发策略：模拟手势切换到【$targetName】流")
 
                 // 重点：使用物理坐标手势点击（无视 clickable=false）
                 val clickSuccess = GestureEngine.performClick(
@@ -197,19 +197,19 @@ class ScrollFeedTask(
     }
 
 
-    // 🌟【新增：完成时唤醒 Deferred】
+    // 【新增：完成时唤醒 Deferred】
     override fun finishTask() {
         super.finishTask()
         onCompleted?.invoke()
     }
 
-    // 🌟【新增：失败时唤醒 Deferred】
+    // 【新增：失败时唤醒 Deferred】
     override fun failedTask(reason: String) {
         super.failedTask(reason)
         onFailed?.invoke(reason)
     }
 
-    // 🌟【新增：强杀时释放 Deferred】
+    // 【新增：强杀时释放 Deferred】
     override fun onForceStopped() {
         onFailed?.invoke("任务被强制终止")
     }

@@ -118,7 +118,7 @@ class TaskDispatcher(
     fun start(warmUpDelayMs: Long = 4000L) {
         if (stateMachine.getCurrentState() == EngineState.EMERGENCY_STOP) {
             Log.w(tag, "引擎处于风控熔断状态，需人工确认恢复后才能启动")
-            broadcastStepLog("🚨 风控熔断尚未解除，请在控制台确认恢复后再启动")
+            broadcastStepLog("风控熔断尚未解除，请在控制台确认恢复后再启动")
             return
         }
 
@@ -127,7 +127,7 @@ class TaskDispatcher(
             return
         }
 
-        Log.i(tag, "🚀 启动 TaskDispatcher 工作流...")
+        Log.i(tag, "启动 TaskDispatcher 工作流...")
         dispatcherScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
         supervisorAgent.start()
@@ -148,7 +148,7 @@ class TaskDispatcher(
             if (warmUpDelayMs > 0) {
                 val totalSeconds = (warmUpDelayMs / 1000).toInt()
                 for (s in totalSeconds downTo 1) {
-                    broadcastStepLog("🚀 正在就绪 Boss 推荐流，将在 ${s}s 后开启寻岗...")
+                    broadcastStepLog("正在就绪 Boss 推荐流，将在 ${s}s 后开启寻岗...")
                     delay(1000L)
                 }
             }
@@ -158,7 +158,7 @@ class TaskDispatcher(
     }
 
     fun stop() {
-        Log.w(tag, "🛑 停止 TaskDispatcher 工作流")
+        Log.w(tag, "停止 TaskDispatcher 工作流")
         haltWorkflow()
         safeTransitionTo(EngineState.IDLE, "终止任务")
     }
@@ -183,7 +183,7 @@ class TaskDispatcher(
      * 紧急停止：区分「用户手动拉停」与「风控自动熔断」。
      * - 手动拉停：等同普通终止，直接归位 IDLE；
      * - 风控熔断：驻留 EMERGENCY_STOP 红灯，由用户在控制台人工确认后恢复，
-     *   避免 UI 上熔断状态一闪而过、以及风控刚触发就能无冷却继续投递。
+     * 避免 UI 上熔断状态一闪而过、以及风控刚触发就能无冷却继续投递。
      */
     fun emergencyStop(riskType: String, reason: String) {
         if (riskType == RISK_TYPE_MANUAL) {
@@ -193,7 +193,7 @@ class TaskDispatcher(
 
         safeTransitionTo(EngineState.EMERGENCY_STOP, "安全风控熔断: $reason")
         haltWorkflow()
-        broadcastStepLog("🚨 已触发风控熔断 ($riskType)：$reason。请先到 Boss 直聘确认账号状态，再在控制台解除熔断。")
+        broadcastStepLog("已触发风控熔断 ($riskType)：$reason。请先到 Boss 直聘确认账号状态，再在控制台解除熔断。")
     }
 
     /**
@@ -202,7 +202,7 @@ class TaskDispatcher(
     fun recoverFromEmergencyStop() {
         if (stateMachine.getCurrentState() != EngineState.EMERGENCY_STOP) return
         stateMachine.transitionTo(EngineState.IDLE, "人工确认解除熔断")
-        broadcastStepLog("🫶 风控熔断已人工确认解除，随时可以重新出发")
+        broadcastStepLog("风控熔断已人工确认解除，随时可以重新出发")
     }
 
     /**
@@ -225,14 +225,14 @@ class TaskDispatcher(
     fun pause() {
         if (stateMachine.transitionTo(EngineState.PAUSED, "暂停指令")) {
             configRepository.setPaused(true)
-            broadcastStepLog("⏸️ 流水线已挂起")
+            broadcastStepLog("流水线已挂起")
         }
     }
 
     fun resume() {
         if (stateMachine.transitionTo(EngineState.SCANNING, "恢复执行")) {
             configRepository.setPaused(false)
-            broadcastStepLog("▶️ 流水线已恢复")
+            broadcastStepLog("流水线已恢复")
         }
     }
 
@@ -316,7 +316,7 @@ class TaskDispatcher(
 
                 val job = scrapeDeferred.await()
                 if (job == null) {
-                    broadcastStepLog("⚠️ 岗位详情提取失败，安全回退")
+                    broadcastStepLog("岗位详情提取失败，安全回退")
                     ensureInRecommendList()
                     continue
                 }
@@ -325,7 +325,7 @@ class TaskDispatcher(
 
                 // 阶段二：DeepSeek 评估
                 safeTransitionTo(EngineState.THINKING, "DeepSeek 评估中")
-                broadcastStepLog("🧠 DeepSeek 正在评估【${job.companyName} - ${job.title}】...")
+                broadcastStepLog("DeepSeek 正在评估【${job.companyName} - ${job.title}】...")
                 val evalResult = evaluatorAgent.evaluate(job)
 
                 humanDelay(1000L, 200L)
@@ -333,7 +333,7 @@ class TaskDispatcher(
                 // 阶段三：决策闭环分流
                 if (evalResult.isApproved) {
                     safeTransitionTo(EngineState.COMMUNICATING, "发起打招呼破冰")
-                    broadcastStepLog("🎯 契合度达标 (${evalResult.matchScore}分)，立即发起破冰沟通...")
+                    broadcastStepLog("契合度达标 (${evalResult.matchScore}分)，立即发起破冰沟通...")
 
                     val greetDeferred = CompletableDeferred<Boolean>()
                     communicatorAgent.executeGreeting(
@@ -346,7 +346,7 @@ class TaskDispatcher(
                     greetDeferred.await()
                     humanDelay(1500L, 300L)
                 } else {
-                    broadcastStepLog("⏭️ 契合度不足 (${evalResult.matchScore}分)，跳过该岗位")
+                    broadcastStepLog("契合度不足 (${evalResult.matchScore}分)，跳过该岗位")
                 }
 
                 // 阶段四：安全退回推荐列表
@@ -382,7 +382,7 @@ class TaskDispatcher(
         }
 
         if (currentScene != PageScene.RECOMMEND_LIST) {
-            Log.e(tag, "⚠️ 连续后退未恢复，启动 WelcomeActivity 显式复位至推荐首页")
+            Log.e(tag, "连续后退未恢复，启动 WelcomeActivity 显式复位至推荐首页")
             resetToRecommendFeed()
         }
     }
@@ -391,7 +391,7 @@ class TaskDispatcher(
      * 【显式组件复位】：通过 ComponentName 直接唤醒 WelcomeActivity 并校准 Tab
      */
     private suspend fun resetToRecommendFeed() {
-        broadcastStepLog("🔄 正在执行基准线复位：定向拉起 WelcomeActivity...")
+        broadcastStepLog("正在执行基准线复位：定向拉起 WelcomeActivity...")
 
         // 显式指定拉起公开的 WelcomeActivity
         val intent = Intent(Intent.ACTION_MAIN).apply {
@@ -450,7 +450,7 @@ class TaskDispatcher(
             tabLabels?.forEach { it.recycle() }
             freshRoot.recycle()
 
-            Log.i(tag, "✅ 成功复位并锚定在 Boss 直聘【职位 -> 推荐】流！")
+            Log.i(tag, "成功复位并锚定在 Boss 直聘【职位 -> 推荐】流！")
         } finally {
             root.recycle()
         }

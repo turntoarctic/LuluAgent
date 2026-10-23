@@ -79,7 +79,7 @@ class JobRepository(private val db: AppDatabase) {
         jobDao.updateStatus(jobId, JobEntity.STATUS_COMMUNICATED)
     }
 
-    // 🌟【新增】：将岗位标记为已完成投递流转
+    // 【新增】：将岗位标记为已完成投递流转
     suspend fun markJobDelivered(jobId: String) = withContext(Dispatchers.IO) {
         jobDao.updateStatus(jobId, JobEntity.STATUS_DELIVERED)
     }

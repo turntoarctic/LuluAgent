@@ -12,7 +12,7 @@ import com.jobmate.app.accessibility.util.GestureEngine
 class InspectDetailTask(
     private val cardClickBounds: Rect? = null,
     private val onJobScraped: ((ScrapedRawJob) -> Unit)? = null,
-    private val onError: ((String) -> Unit)? = null // 🌟【新增错误回调】
+    private val onError: ((String) -> Unit)? = null // 【新增错误回调】
 ) : BaseAutomationTask() {
 
     // 用户可见的任务名 (HUD 日志与失败提示展示用)
@@ -117,7 +117,7 @@ class InspectDetailTask(
             timestamp = System.currentTimeMillis()
         )
 
-        sendTaskMessage("📑 成功采集【$companyName - $jobName】，JD 长度: ${description.length} 字")
+        sendTaskMessage("成功采集【$companyName - $jobName】，JD 长度: ${description.length} 字")
         onJobScraped?.invoke(job)
 
         // 核心改动：采集完成即大功告成，停留在详情页，绝不主动按返回键！
@@ -133,13 +133,13 @@ class InspectDetailTask(
     }
 
 
-    // 🌟【新增：失败时唤醒 Deferred】
+    // 【新增：失败时唤醒 Deferred】
     override fun failedTask(reason: String) {
         super.failedTask(reason)
         onError?.invoke(reason)
     }
 
-    // 🌟【新增：强杀时释放 Deferred】
+    // 【新增：强杀时释放 Deferred】
     override fun onForceStopped() {
         onError?.invoke("任务被强制终止")
     }

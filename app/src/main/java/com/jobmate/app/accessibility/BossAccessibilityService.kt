@@ -54,7 +54,7 @@ class BossAccessibilityService : AccessibilityService(), TaskCallback {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        Log.i(tag, "✅ 无障碍通道已建立并激活")
+        Log.i(tag, "无障碍通道已建立并激活")
         registerCommandReceiver()
     }
 
@@ -64,11 +64,11 @@ class BossAccessibilityService : AccessibilityService(), TaskCallback {
         currentRunningTask?.forceStopSilently()
         currentRunningTask = null
         instance = null
-        Log.w(tag, "🛑 无障碍服务已销毁")
+        Log.w(tag, "无障碍服务已销毁")
     }
 
     override fun onInterrupt() {
-        Log.w(tag, "⚠️ 无障碍服务被打断")
+        Log.w(tag, "无障碍服务被打断")
         currentRunningTask?.forceStopSilently()
         currentRunningTask = null
     }
@@ -99,7 +99,7 @@ class BossAccessibilityService : AccessibilityService(), TaskCallback {
 
             // 如果侦测到验证码/人脸识别，第一时间发出风险警报广播
             if (currentScene.isRisk) {
-                Log.e(tag, "🚨 检测到风控验证场景，广播警报！")
+                Log.e(tag, "检测到风控验证场景，广播警报！")
                 broadcastRiskTriggered("CAPTCHA_INTERCEPT", "检测到滑动验证码或安全验证弹窗")
             }
         }
@@ -173,7 +173,7 @@ class BossAccessibilityService : AccessibilityService(), TaskCallback {
                 currentRunningTask?.forceStopSilently()
             }
             currentRunningTask = task
-            Log.i(tag, "▶️ 开始派发原子任务: ${task.getTaskName()}")
+            Log.i(tag, "开始派发原子任务: ${task.getTaskName()}")
             task.execute(this, this)
         }
     }

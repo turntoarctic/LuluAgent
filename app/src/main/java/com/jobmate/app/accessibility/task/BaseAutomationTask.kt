@@ -167,7 +167,7 @@ abstract class BaseAutomationTask {
         if (!isTaskRunning) return
         stopTimeoutMonitor()
         isTaskRunning = false
-        sendTaskMessage("✅ 任务顺利完成")
+        sendTaskMessage("任务顺利完成")
         callback?.onTaskFinished(getTaskName())
     }
 
@@ -178,7 +178,7 @@ abstract class BaseAutomationTask {
         tryDumpHierarchyOnFailure()
         stopTimeoutMonitor()
         isTaskRunning = false
-        sendTaskMessage("❌ 任务失败: $reason")
+        sendTaskMessage("任务失败: $reason")
         callback?.onTaskFailed(getTaskName(), reason)
     }
 
@@ -210,7 +210,7 @@ abstract class BaseAutomationTask {
             isTaskRunning = false
             stopTimeoutMonitor()
             mainHandler.removeCallbacksAndMessages(null)
-            onForceStopped() // 🌟【新增】：强杀时触发子类兜底，避免协程悬挂死锁
+            onForceStopped() // 【新增】：强杀时触发子类兜底，避免协程悬挂死锁
         }
     }
 
@@ -250,7 +250,7 @@ abstract class BaseAutomationTask {
 
     private fun dumpNodeRecursive(node: AccessibilityNodeInfo?, sb: StringBuilder, depth: Int) {
         if (node == null) return
-        val indent = "  ".repeat(depth)
+        val indent = " ".repeat(depth)
         val bounds = Rect()
         node.getBoundsInScreen(bounds)
         val className = node.className ?: "view"

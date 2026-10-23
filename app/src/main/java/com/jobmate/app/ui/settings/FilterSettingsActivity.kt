@@ -41,13 +41,13 @@ class FilterSettingsActivity : AppCompatActivity() {
     private val colorBg = Color.parseColor("#F8F9FB")
     private val colorCard = Color.WHITE
     private val colorCardStroke = Color.parseColor("#EAECEF")
-    private val colorPrimary = Color.parseColor("#274DEA")         // 湛蓝主色
-    private val colorPrimaryDark = Color.parseColor("#1F3EBB")     // 高对比深蓝
-    private val colorPrimarySoft = Color.parseColor("#E9EDFC")     // 极淡雾蓝
-    private val colorTextMain = Color.parseColor("#1F2329")        // 高阶石板黑
-    private val colorTextSub = Color.parseColor("#646A73")         // 次级深灰
-    private val colorTextTip = Color.parseColor("#8F959E")         // 浅灰说明
-    private val colorInputBg = Color.parseColor("#F4F6F9")         // 输入框底色
+    private val colorPrimary = Color.parseColor("#274DEA") // 湛蓝主色
+    private val colorPrimaryDark = Color.parseColor("#1F3EBB") // 高对比深蓝
+    private val colorPrimarySoft = Color.parseColor("#E9EDFC") // 极淡雾蓝
+    private val colorTextMain = Color.parseColor("#1F2329") // 高阶石板黑
+    private val colorTextSub = Color.parseColor("#646A73") // 次级深灰
+    private val colorTextTip = Color.parseColor("#8F959E") // 浅灰说明
+    private val colorInputBg = Color.parseColor("#F4F6F9") // 输入框底色
     private val colorDivider = Color.parseColor("#F0F2F5")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -161,7 +161,7 @@ class FilterSettingsActivity : AppCompatActivity() {
             ).apply { topMargin = dp2px(12) }
         }
 
-        card.addView(createSectionTitle("🧮 评分策略", "DeepSeek 四维打分后按偏好加权合成综合分"))
+        card.addView(createSectionTitle("评分策略", "DeepSeek 四维打分后按偏好加权合成综合分"))
 
         // 阈值行：标签 + 实时数值胶囊
         val thresholdRow = LinearLayout(this).apply {
@@ -296,7 +296,7 @@ class FilterSettingsActivity : AppCompatActivity() {
             ).apply { topMargin = dp2px(12) }
         }
 
-        card.addView(createSectionTitle("🛡️ 本地硬过滤", "命中即拦截，0 Token 消耗，优先于大模型评估"))
+        card.addView(createSectionTitle("本地硬过滤", "命中即拦截，0 Token 消耗，优先于大模型评估"))
 
         // 期望薪资下限
         card.addView(createFieldLabel("期望薪资下限 (K)", dp2px(14)))
@@ -440,7 +440,7 @@ class FilterSettingsActivity : AppCompatActivity() {
         configRepository.setFilterOutsourcing(outsourcingSwitch.isChecked)
         configRepository.setExcludeKeywords(excludeKeywordsInput.text.toString())
 
-        Toast.makeText(this, "策略已保存，下一轮评估即刻生效 🦌", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "策略已保存，下一轮评估即刻生效", Toast.LENGTH_SHORT).show()
         finish()
     }
 

@@ -78,7 +78,7 @@ class DeepSeekClient(
         // 1. 指纹缓存前置拦截 (0 Token 消耗) —— 指纹含 标题+公司+薪资+JD，避免同 JD 不同岗位误复用
         val cached = DeduplicationCache.getCachedEvaluation(rawJob)
         if (cached != null) {
-            Log.i(tag, "🎯 命中内存指纹缓存，复用前序评估结果: ${cached.matchScore}分")
+            Log.i(tag, "命中内存指纹缓存，复用前序评估结果: ${cached.matchScore}分")
             return Result.success(cached)
         }
 
@@ -131,7 +131,7 @@ class DeepSeekClient(
                         isSuccess = true
                     )
 
-                    Log.i(tag, "✅ 岗位评估成功 | 评分: ${evalResponse.matchScore} | 耗时: ${duration}ms")
+                    Log.i(tag, "岗位评估成功 | 评分: ${evalResponse.matchScore} | 耗时: ${duration}ms")
                     Result.success(evalResponse)
                 } catch (e: Exception) {
                     val parseErr = "JSON 反序列化失败: ${e.message} | 原始返回: $rawJson"
@@ -141,7 +141,7 @@ class DeepSeekClient(
                 }
             },
             onFailure = { error ->
-                Log.e(tag, "❌ 评估网络请求重试耗尽失败: ${error.message}")
+                Log.e(tag, "评估网络请求重试耗尽失败: ${error.message}")
                 recordFailedAudit(rawJob.resolveJobId(), request, "", duration, error.message ?: "未知网络异常")
                 Result.failure(error)
             }
@@ -195,7 +195,7 @@ class DeepSeekClient(
                         isSuccess = true
                     )
 
-                    Log.i(tag, "✅ 问候语生成成功: ${chatResponse.greetingText}")
+                    Log.i(tag, "问候语生成成功: ${chatResponse.greetingText}")
                     Result.success(chatResponse)
                 } catch (e: Exception) {
                     val parseErr = "问候语 JSON 解析失败: ${e.message}"

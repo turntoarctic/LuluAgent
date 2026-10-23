@@ -19,7 +19,7 @@ class SupervisorAgent(context: Context) : BaseAgent(context, "安全卫兵") {
         super.start()
         consecutiveFailureCount = 0
         registerRiskListeners()
-        sendAgentLog("🛡️ 安全风控官已就位，全局守护中")
+        sendAgentLog("安全风控官已就位，全局守护中")
     }
 
     private fun registerRiskListeners() {
@@ -64,7 +64,7 @@ class SupervisorAgent(context: Context) : BaseAgent(context, "安全卫兵") {
      * 触发全系统急停熔断
      */
     private fun triggerEmergencyStop(riskType: String, reason: String) {
-        val alertMsg = "🚨【安全熔断】原因: $reason (特征: $riskType)，系统已紧急刹车！"
+        val alertMsg = "【安全熔断】原因: $reason (特征: $riskType)，系统已紧急刹车！"
         Log.e(tag, alertMsg)
         sendAgentLog(alertMsg, isHighlight = true)
 

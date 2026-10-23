@@ -82,7 +82,7 @@ class TokenUsageTracker(
         val actualMaxCost = maxOf(currentCost, dbEstimatedCost)
 
         if (actualMaxCost >= maxDailyCostRmb) {
-            Log.e(tag, "🚨 触发预算熔断！今日已消耗 ￥${"%.4f".format(actualMaxCost)}，超过设定阈值 ￥$maxDailyCostRmb")
+            Log.e(tag, "触发预算熔断！今日已消耗 ￥${"%.4f".format(actualMaxCost)}，超过设定阈值 ￥$maxDailyCostRmb")
             return true
         }
         return false

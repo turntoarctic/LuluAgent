@@ -20,63 +20,90 @@ import android.widget.RelativeLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ViewFlipper
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.jobmate.app.JobmateApp
 import com.jobmate.app.accessibility.BossAccessibilityService
+import com.jobmate.app.data.local.AppDatabase
+import com.jobmate.app.data.local.entity.JobEntity
+import com.jobmate.app.data.pref.AppSettings
 import com.jobmate.app.dispatcher.contract.DispatcherBroadcasts
 import com.jobmate.app.dispatcher.fsm.EngineState
 import com.jobmate.app.floating.FloatingHUDService
-import com.jobmate.app.ui.dashboard.HistoryRecordActivity
-import com.jobmate.app.ui.settings.SettingsActivity
+import com.jobmate.app.ui.settings.ApiKeyConfigActivity
+import com.jobmate.app.ui.settings.FilterSettingsActivity
+import com.jobmate.app.ui.settings.ResumeEditorActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /**
- * 求职搭子 - 主控制台 (极简纯净 · 治愈温润风)
+ * 求职搭子 - 主控宿主 (单 Activity 三 Tab：首页 / 投递手账 / 我的设置)
  */
 class MainActivity : AppCompatActivity() {
 
-    private val bossPackage = "com.hpbr.bosszhipin"
+    private val bossPackage ="com.hpbr.bosszhipin"
 
-    // UI 引用
+    // Tab 索引
+    private val TAB_HOME = 0
+    private val TAB_RECORDS = 1
+    private val TAB_SETTINGS = 2
+    private var currentTab = TAB_HOME
+
+    // 视觉规范色盘：湛蓝主色 + 淡雅灰阶
+    private val colorBg = Color.parseColor("#F8F9FB")
+    private val colorCard = Color.WHITE
+    private val colorCardStroke = Color.parseColor("#F0F2F5")
+    private val colorPrimary = Color.parseColor("#274DEA")
+    private val colorPrimarySoft = Color.parseColor("#E9EDFC")
+    private val colorTextMain = Color.parseColor("#1F2329")
+    private val colorTextSub = Color.parseColor("#8F959E")
+    private val colorTextBody = Color.parseColor("#4E5969")
+    private val colorSuccess = Color.parseColor("#2BA471")
+    private val colorSuccessSoft = Color.parseColor("#EBF6F1")
+
+    // 宿主级视图
+    private lateinit var viewFlipper: ViewFlipper
+    private lateinit var titleTv: TextView
+    private lateinit var subtitleTv: TextView
+    private val tabViews = mutableListOf<LinearLayout>()
+
+    // 首页视图引用
     private lateinit var accessibilityBtn: TextView
     private lateinit var overlayBtn: TextView
     private lateinit var statusTextTv: TextView
     private lateinit var percentageTv: TextView
     private lateinit var mainActionButton: TextView
-
-    // 数据看板四个计数器
     private lateinit var communicatedCountTv: TextView
     private lateinit var deliveredCountTv: TextView
     private lateinit var evaluatedCountTv: TextView
     private lateinit var filteredCountTv: TextView
 
-    // 🌟 纯净视觉色盘：高饱和湛蓝 + 极简淡雅灰
-    private val colorBg = Color.parseColor("#F8F9FB")
-    private val colorCard = Color.WHITE
-    private val colorCardStroke = Color.parseColor("#F0F2F5")
-    private val colorPrimary = Color.parseColor("#274DEA")       // 湛蓝主色
-    private val colorPrimarySoft = Color.parseColor("#E9EDFC")   // 极淡雾蓝
-    private val colorTextMain = Color.parseColor("#1F2329")      // 高阶石板黑
-    private val colorTextSub = Color.parseColor("#8F959E")       // 优雅次级灰
-    private val colorSuccess = Color.parseColor("#2BA471")       // 清新薄荷绿
-    private val colorSuccessSoft = Color.parseColor("#EBF6F1")
+    // 投递手账视图引用
+    private lateinit var recordsRecyclerView: RecyclerView
+    private lateinit var recordsEmptyTv: TextView
+    private val records = mutableListOf<JobEntity>()
+    private val recordsAdapter by lazy { HistoryAdapter(records) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        supportActionBar?.hide()
         setContentView(buildContentView())
         registerStatusReceiver()
     }
 
     override fun onResume() {
         super.onResume()
-        refreshAllStatus()
+        refreshHomeTab()
+        if (currentTab == TAB_RECORDS) loadRecords()
     }
 
     override fun onDestroy() {
@@ -84,7 +111,17 @@ class MainActivity : AppCompatActivity() {
         unregisterReceiver(statusReceiver)
     }
 
-    // ==================== 极简纯净纯代码布局 ====================
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        // 非首页 Tab 按返回时回到首页，再次返回才退出应用
+        if (currentTab != TAB_HOME) {
+            selectTab(TAB_HOME)
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    // ==================== 宿主骨架：顶栏 + 三页 Flipper + 底部导航 ====================
 
     private fun buildContentView(): View {
         val root = RelativeLayout(this).apply {
@@ -95,76 +132,51 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        // 1. 顶部标题栏
+        // 1. 顶部标题栏（标题随 Tab 切换）
         val topBar = createTopBar().apply { id = View.generateViewId() }
-        val topBarParams = RelativeLayout.LayoutParams(
+        root.addView(topBar, RelativeLayout.LayoutParams(
             RelativeLayout.LayoutParams.MATCH_PARENT,
             RelativeLayout.LayoutParams.WRAP_CONTENT
-        ).apply { addRule(RelativeLayout.ALIGN_PARENT_TOP) }
-        root.addView(topBar, topBarParams)
+        ).apply { addRule(RelativeLayout.ALIGN_PARENT_TOP) })
 
-        // 2. 底部轻量导航栏
+        // 2. 底部导航
         val bottomNav = createBottomNav().apply { id = View.generateViewId() }
-        val bottomNavParams = RelativeLayout.LayoutParams(
+        root.addView(bottomNav, RelativeLayout.LayoutParams(
             RelativeLayout.LayoutParams.MATCH_PARENT,
             dp2px(60)
-        ).apply { addRule(RelativeLayout.ALIGN_PARENT_BOTTOM) }
-        root.addView(bottomNav, bottomNavParams)
+        ).apply { addRule(RelativeLayout.ALIGN_PARENT_BOTTOM) })
 
-        // 3. 中间可滚动卡片区
-        val scrollView = ScrollView(this).apply {
-            isVerticalScrollBarEnabled = false
-            overScrollMode = View.OVER_SCROLL_NEVER
-        }
-        val scrollParams = RelativeLayout.LayoutParams(
+        // 3. 中间内容翻转容器（三 Tab 页面常驻，切换零重建）
+        viewFlipper = ViewFlipper(this).apply { id = View.generateViewId() }
+        viewFlipper.addView(buildHomePage())
+        viewFlipper.addView(buildRecordsPage())
+        viewFlipper.addView(buildSettingsPage())
+        root.addView(viewFlipper, RelativeLayout.LayoutParams(
             RelativeLayout.LayoutParams.MATCH_PARENT,
             RelativeLayout.LayoutParams.MATCH_PARENT
         ).apply {
             addRule(RelativeLayout.BELOW, topBar.id)
             addRule(RelativeLayout.ABOVE, bottomNav.id)
-        }
-
-        val contentLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = dp2px(18)
-            setPadding(pad, dp2px(6), pad, dp2px(24))
-        }
-
-        // 核心板块装配
-        contentLayout.addView(createPreparednessCard())
-        contentLayout.addView(createRunningStatusCard())
-        contentLayout.addView(createDataDashboardCard())
-
-        scrollView.addView(contentLayout)
-        root.addView(scrollView, scrollParams)
+        })
 
         return root
     }
 
-    /**
-     * 顶部标题栏：温润大标题与治愈问候
-     */
     private fun createTopBar(): View {
         return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp2px(20), dp2px(42), dp2px(20), dp2px(12))
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp2px(20), dp2px(18), dp2px(20), dp2px(12))
 
-            val titleCol = LinearLayout(this@MainActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-
-            val title = TextView(this@MainActivity).apply {
-                text = "求职搭子 🦌"
+            titleTv = TextView(this@MainActivity).apply {
+                text ="求职搭子"
                 textSize = 21f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(colorTextMain)
                 includeFontPadding = false
             }
 
-            val subtitle = TextView(this@MainActivity).apply {
-                text = "深呼吸，今天也会遇到懂你的好伯乐"
+            subtitleTv = TextView(this@MainActivity).apply {
+                text ="深呼吸，今天也会遇到懂你的好伯乐"
                 textSize = 12f
                 setTextColor(colorTextSub)
                 includeFontPadding = false
@@ -174,80 +186,136 @@ class MainActivity : AppCompatActivity() {
                 ).apply { topMargin = dp2px(4) }
             }
 
-            titleCol.addView(title)
-            titleCol.addView(subtitle)
-
-            // 右上角小齿轮
-            val gearBtn = TextView(this@MainActivity).apply {
-                text = "⚙️"
-                textSize = 18f
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(Color.WHITE)
-                    setStroke(dp2px(1), colorCardStroke)
-                }
-                val sz = dp2px(36)
-                layoutParams = LinearLayout.LayoutParams(sz, sz)
-                setOnClickListener { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
-            }
-
-            addView(titleCol)
-            addView(gearBtn)
+            addView(titleTv)
+            addView(subtitleTv)
         }
     }
 
-    /**
-     * 出发准备清单卡片（将原先占地巨大的双卡片合为清爽的列表）
-     */
-    private fun createPreparednessCard(): View {
-        val card = LinearLayout(this).apply {
+    private fun createBottomNav(): View {
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                setColor(Color.WHITE)
+                setStroke(dp2px(1), colorCardStroke)
+            }
+        }
+
+        val tabs = listOf(
+            "首页" to TAB_HOME,
+            "投递手账" to TAB_RECORDS,
+            "我的设置" to TAB_SETTINGS
+        )
+        tabs.forEach { (label, index) ->
+            val tabView = createNavItem(label, index)
+            tabViews.add(tabView)
+            nav.addView(tabView)
+        }
+        return nav
+    }
+
+    private fun createNavItem(label: String, tabIndex: Int): LinearLayout {
+        val tab = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = createCardDrawable()
-            setPadding(dp2px(16), dp2px(16), dp2px(16), dp2px(16))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp2px(10) }
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            setOnClickListener { selectTab(tabIndex) }
+
+            val dot = View(this@MainActivity).apply {
+                id = View.generateViewId()
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(colorPrimary)
+                }
+                layoutParams = LinearLayout.LayoutParams(dp2px(4), dp2px(4))
+            }
+
+            val labelTv = TextView(this@MainActivity).apply {
+                text = label
+                textSize = 13f
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(3) }
+            }
+
+            addView(dot)
+            addView(labelTv)
+        }
+        return tab
+    }
+
+    /** Tab 切换：更新选中态、标题与内容页 */
+    private fun selectTab(tabIndex: Int) {
+        if (currentTab == tabIndex) return
+        currentTab = tabIndex
+        viewFlipper.displayedChild = tabIndex
+
+        when (tabIndex) {
+            TAB_HOME -> {
+                titleTv.text ="求职搭子"
+                subtitleTv.text ="深呼吸，今天也会遇到懂你的好伯乐"
+                refreshHomeTab()
+            }
+            TAB_RECORDS -> {
+                titleTv.text ="投递手账"
+                subtitleTv.text ="记录替你敲开的每一扇门与每一次权衡"
+                loadRecords()
+            }
+            TAB_SETTINGS -> {
+                titleTv.text ="我的设置"
+                subtitleTv.text ="密钥、简历与策略，都在这里"
+            }
+        }
+        tabViews.forEachIndexed { index, tab ->
+            val selected = index == tabIndex
+            val labelTv = tab.getChildAt(1) as TextView
+            labelTv.setTextColor(if (selected) colorPrimary else colorTextSub)
+            labelTv.typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            tab.getChildAt(0).visibility = if (selected) View.VISIBLE else View.INVISIBLE
+        }
+    }
+
+    // ==================== Tab 1：首页 ====================
+
+    private fun buildHomePage(): View {
+        val scrollView = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
         }
 
-        // 小标题
-        val headerTv = TextView(this).apply {
-            text = "出发准备清单"
-            textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(colorTextSub)
-            includeFontPadding = false
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dp2px(18)
+            setPadding(pad, dp2px(6), pad, dp2px(24))
         }
-        card.addView(headerTv)
 
-        // 1. 无障碍权限行
+        contentLayout.addView(buildPreparednessCard())
+        contentLayout.addView(buildRunningStatusCard())
+        contentLayout.addView(buildDataDashboardCard())
+
+        scrollView.addView(contentLayout)
+        return scrollView
+    }
+
+    private fun buildPreparednessCard(): View {
+        val card = createCardContainer()
+            .setPadding(dp2px(16), dp2px(16), dp2px(16), dp2px(16)) as LinearLayout
+
+        card.addView(createSectionHeader("出发准备清单"))
+
         val (row1, btn1) = createPermRow(
-            icon = "🐾",
-            title = "敲门开路",
-            desc = "用于在 Boss 推荐流替你探寻新岗位",
+            title ="敲门开路",
+            desc ="用于在 Boss 推荐流替你探寻新岗位",
             onAction = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         )
         accessibilityBtn = btn1
 
-        // 浅浅的分割线
-        val divider = View(this).apply {
-            setBackgroundColor(colorCardStroke)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp2px(1)
-            ).apply {
-                topMargin = dp2px(10)
-                bottomMargin = dp2px(10)
-            }
-        }
-
-        // 2. 悬浮窗权限行
         val (row2, btn2) = createPermRow(
-            icon = "💭",
-            title = "悄悄支招",
-            desc = "运行时在屏幕旁提供悬浮控制台",
+            title ="悄悄支招",
+            desc ="运行时在屏幕旁提供悬浮控制台",
             onAction = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     startActivity(
@@ -262,14 +330,13 @@ class MainActivity : AppCompatActivity() {
         overlayBtn = btn2
 
         card.addView(row1)
-        card.addView(divider)
+        card.addView(createCardDivider())
         card.addView(row2)
 
         return card
     }
 
     private fun createPermRow(
-        icon: String,
         title: String,
         desc: String,
         onAction: () -> Unit
@@ -283,31 +350,21 @@ class MainActivity : AppCompatActivity() {
             ).apply { topMargin = dp2px(10) }
         }
 
-        val iconTv = TextView(this).apply {
-            text = icon
-            textSize = 16f
-            gravity = Gravity.CENTER
-            includeFontPadding = false
-            layoutParams = LinearLayout.LayoutParams(dp2px(26), dp2px(26))
-        }
-
         val textCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp2px(8)
                 marginEnd = dp2px(8)
             }
         }
 
-        val titleTv = TextView(this).apply {
+        textCol.addView(TextView(this).apply {
             text = title
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(colorTextMain)
             includeFontPadding = false
-        }
-
-        val descTv = TextView(this).apply {
+        })
+        textCol.addView(TextView(this).apply {
             text = desc
             textSize = 11f
             setTextColor(colorTextSub)
@@ -316,13 +373,10 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dp2px(2) }
-        }
-
-        textCol.addView(titleTv)
-        textCol.addView(descTv)
+        })
 
         val actionBtn = TextView(this).apply {
-            text = "去开启"
+            text ="去开启"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(colorPrimary)
@@ -337,28 +391,16 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { onAction() }
         }
 
-        row.addView(iconTv)
         row.addView(textCol)
         row.addView(actionBtn)
-
         return Pair(row, actionBtn)
     }
 
-    /**
-     * 运行状态与行动控制卡片 (极简干净、大圆角呼吸感)
-     */
-    private fun createRunningStatusCard(): View {
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = createCardDrawable()
-            setPadding(dp2px(20), dp2px(20), dp2px(20), dp2px(20))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp2px(14) }
-        }
+    private fun buildRunningStatusCard(): View {
+        val card = createCardContainer()
+            .setPadding(dp2px(20), dp2px(20), dp2px(20), dp2px(20)) as LinearLayout
+        (card.layoutParams as LinearLayout.LayoutParams).topMargin = dp2px(14)
 
-        // 上方状态小胶囊与进度
         val topRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -375,7 +417,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp2px(10), dp2px(4), dp2px(12), dp2px(4))
         }
 
-        val dot = View(this).apply {
+        statusPill.addView(View(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(colorPrimary)
@@ -383,19 +425,18 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(dp2px(6), dp2px(6)).apply {
                 marginEnd = dp2px(6)
             }
-        }
+        })
 
         statusTextTv = TextView(this).apply {
-            text = "待命中 (就绪)"
+            text ="待命中 (就绪)"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(colorPrimary)
             includeFontPadding = false
         }
-        statusPill.addView(dot)
         statusPill.addView(statusTextTv)
 
-        val progressInfo = LinearLayout(this).apply {
+        val progressContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(
@@ -406,39 +447,28 @@ class MainActivity : AppCompatActivity() {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL
             }
         }
-
-        val progressLabel = TextView(this).apply {
-            text = "今日配额 "
+        progressContainer.addView(TextView(this).apply {
+            text ="今日配额 "
             textSize = 12f
             setTextColor(colorTextSub)
             includeFontPadding = false
-        }
-
+        })
         percentageTv = TextView(this).apply {
-            text = "0%"
+            text ="0%"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(colorTextMain)
             includeFontPadding = false
         }
-
-        val progressContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(progressLabel)
-            addView(percentageTv)
-        }
+        progressContainer.addView(percentageTv)
 
         topRow.addView(statusPill)
-        topRow.addView(View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(0, 0, 1f)
-        })
+        topRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, 0, 1f) })
         topRow.addView(progressContainer)
         card.addView(topRow)
 
-        // 下半段：温润圆角行动主按钮
         mainActionButton = TextView(this).apply {
-            text = "🦌 出发，帮我盯岗位"
+            text ="出发，帮我盯岗位"
             textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
@@ -457,27 +487,18 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dp2px(18) }
         }
-
         card.addView(mainActionButton)
+
         return card
     }
 
-    /**
-     * 四列数据看板 (去掉了大色块 Emoji 干扰，以清爽的现代排印聚焦数据)
-     */
-    private fun createDataDashboardCard(): View {
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = createCardDrawable()
-            setPadding(dp2px(16), dp2px(18), dp2px(16), dp2px(18))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp2px(14) }
-        }
+    private fun buildDataDashboardCard(): View {
+        val card = createCardContainer()
+            .setPadding(dp2px(16), dp2px(18), dp2px(16), dp2px(18)) as LinearLayout
+        (card.layoutParams as LinearLayout.LayoutParams).topMargin = dp2px(14)
 
-        val headerTv = TextView(this).apply {
-            text = "求职战报小结"
+        card.addView(TextView(this).apply {
+            text ="求职战报小结"
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(colorTextSub)
@@ -486,8 +507,7 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { bottomMargin = dp2px(14) }
-        }
-        card.addView(headerTv)
+        })
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -497,11 +517,10 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        val (c1, tv1) = createDataColumn("今日沟通", "0")
-        val (c2, tv2) = createDataColumn("今日投递", "0")
-        val (c3, tv3) = createDataColumn("AI 研判", "0")
-        val (c4, tv4) = createDataColumn("本地拦截", "0")
-
+        val (c1, tv1) = createDataColumn("今日沟通")
+        val (c2, tv2) = createDataColumn("今日投递")
+        val (c3, tv3) = createDataColumn("AI 研判")
+        val (c4, tv4) = createDataColumn("本地拦截")
         communicatedCountTv = tv1
         deliveredCountTv = tv2
         evaluatedCountTv = tv3
@@ -511,15 +530,12 @@ class MainActivity : AppCompatActivity() {
         row.addView(c2)
         row.addView(c3)
         row.addView(c4)
-
         card.addView(row)
+
         return card
     }
 
-    private fun createDataColumn(
-        label: String,
-        initialValue: String
-    ): Pair<View, TextView> {
+    private fun createDataColumn(label: String): Pair<View, TextView> {
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -527,7 +543,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val countTv = TextView(this).apply {
-            text = initialValue
+            text ="0"
             textSize = 21f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(colorTextMain)
@@ -535,7 +551,8 @@ class MainActivity : AppCompatActivity() {
             includeFontPadding = false
         }
 
-        val labelTv = TextView(this).apply {
+        col.addView(countTv)
+        col.addView(TextView(this).apply {
             text = label
             textSize = 11f
             setTextColor(colorTextSub)
@@ -544,75 +561,215 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp2px(4)
-                gravity = Gravity.CENTER_HORIZONTAL
-            }
-        }
-
-        col.addView(countTv)
-        col.addView(labelTv)
+            ).apply { topMargin = dp2px(4) }
+        })
 
         return Pair(col, countTv)
     }
 
-    /**
-     * 极简扁平底部导航栏
-     */
-    private fun createBottomNav(): View {
-        val nav = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(Color.WHITE)
-            // 极细微的顶边线
-            background = GradientDrawable().apply {
-                setColor(Color.WHITE)
-                setStroke(dp2px(1), colorCardStroke)
-            }
+    // ==================== Tab 2：投递手账 ====================
+
+    private fun buildRecordsPage(): View {
+        val container = FrameLayout(this).apply {
+            setBackgroundColor(colorBg)
+            val p = dp2px(4)
+            setPadding(dp2px(16), p, dp2px(16), dp2px(12))
         }
 
-        val tabHome = createNavItem("首页", isSelected = true) {}
-        val tabRecords = createNavItem("投递手账", isSelected = false) {
-            startActivity(Intent(this, HistoryRecordActivity::class.java))
-        }
-        val tabMine = createNavItem("我的设置", isSelected = false) {
-            startActivity(Intent(this, SettingsActivity::class.java))
+        recordsRecyclerView = RecyclerView(this).apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = recordsAdapter
+            clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
         }
 
-        nav.addView(tabHome)
-        nav.addView(tabRecords)
-        nav.addView(tabMine)
+        recordsEmptyTv = TextView(this).apply {
+            text ="还没有投递记录\n启动求职搭子后，每一次沟通与评估都会记录在这里"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setTextColor(colorTextSub)
+            setLineSpacing(dp2px(4).toFloat(), 1.0f)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER
+            )
+        }
 
-        return nav
+        container.addView(recordsRecyclerView)
+        container.addView(recordsEmptyTv)
+        return container
     }
 
-    private fun createNavItem(
-        label: String,
-        isSelected: Boolean,
+    private fun loadRecords() {
+        lifecycleScope.launch {
+            val list = withContext(Dispatchers.IO) {
+                AppDatabase.getInstance(this@MainActivity).jobDao().getRecentJobs(limit = 100)
+            }
+            records.clear()
+            records.addAll(list)
+            recordsAdapter.notifyDataSetChanged()
+            recordsEmptyTv.visibility = if (records.isEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    // ==================== Tab 3：我的设置 ====================
+
+    private fun buildSettingsPage(): View {
+        val scrollView = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp2px(18), dp2px(6), dp2px(18), dp2px(24))
+        }
+
+        val card = createCardContainer()
+            .setPadding(dp2px(16), dp2px(6), dp2px(16), dp2px(6)) as LinearLayout
+
+        card.addView(createSettingRow(
+            title ="DeepSeek API Key",
+            desc ="配置智能研判引擎的密钥凭证",
+            onClick = { startActivity(Intent(this, ApiKeyConfigActivity::class.java)) }
+        ))
+        card.addView(createCardDivider())
+        card.addView(createSettingRow(
+            title ="我的简历与背景",
+            desc ="AI 会结合你的经历生成更懂你的破冰语",
+            onClick = { startActivity(Intent(this, ResumeEditorActivity::class.java)) }
+        ))
+        card.addView(createCardDivider())
+        card.addView(createSettingRow(
+            title ="筛选与评分策略",
+            desc ="薪资下限、排除关键词与录取阈值随心调",
+            onClick = { startActivity(Intent(this, FilterSettingsActivity::class.java)) }
+        ))
+        card.addView(createCardDivider())
+        card.addView(createSettingRow(
+            title ="忽略电池优化",
+            desc ="防止后台任务被系统断流中断",
+            onClick = { requestIgnoreBatteryOptimization() }
+        ))
+
+        page.addView(card)
+        scrollView.addView(page)
+        return scrollView
+    }
+
+    private fun createSettingRow(
+        title: String,
+        desc: String,
         onClick: () -> Unit
     ): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp2px(4), dp2px(14), dp2px(4), dp2px(14))
             setOnClickListener { onClick() }
+        }
 
-            val labelTv = TextView(this@MainActivity).apply {
-                text = label
-                textSize = 13f
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-                typeface = if (isSelected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-                setTextColor(if (isSelected) colorPrimary else colorTextSub)
+        val textCol = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = dp2px(8)
             }
+        }
 
-            addView(labelTv)
+        textCol.addView(TextView(this).apply {
+            text = title
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorTextMain)
+            includeFontPadding = false
+        })
+        textCol.addView(TextView(this).apply {
+            text = desc
+            textSize = 11f
+            setTextColor(colorTextSub)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(3) }
+        })
+
+        row.addView(textCol)
+        row.addView(TextView(this).apply {
+            text ="›"
+            textSize = 22f
+            setTextColor(colorTextSub)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+        })
+        return row
+    }
+
+    private fun requestIgnoreBatteryOptimization() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                )
+            } catch (e: Exception) {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
         }
     }
 
-    // ==================== 业务逻辑与状态驱动 ====================
+    // ==================== 公共构建器 ====================
 
-    private fun refreshAllStatus() {
+    private fun createCardContainer(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp2px(18).toFloat()
+                setColor(colorCard)
+                setStroke(dp2px(1), colorCardStroke)
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(10) }
+        }
+    }
+
+    private fun createCardDivider(): View {
+        return View(this).apply {
+            setBackgroundColor(colorCardStroke)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp2px(1)
+            )
+        }
+    }
+
+    private fun createSectionHeader(text: String): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorTextSub)
+            includeFontPadding = false
+        }
+    }
+
+    private fun dp2px(dp: Int): Int {
+        val density = resources.displayMetrics.density
+        return (dp * density + 0.5f).toInt()
+    }
+
+    // ==================== 首页业务：状态驱动 ====================
+
+    private fun refreshHomeTab() {
         val isAccessibilityOk = BossAccessibilityService.isConnected()
         updateButtonStatus(accessibilityBtn, isAccessibilityOk)
 
@@ -620,15 +777,13 @@ class MainActivity : AppCompatActivity() {
         updateButtonStatus(overlayBtn, isOverlayOk)
 
         val app = application as JobmateApp
-        val state = app.stateMachine.getCurrentState()
-        updateEngineStateUi(state)
-
+        updateEngineStateUi(app.stateMachine.getCurrentState())
         loadDashboardData(app)
     }
 
     private fun updateButtonStatus(btn: TextView, isGranted: Boolean) {
         if (isGranted) {
-            btn.text = "已就绪 ✨"
+            btn.text ="已就绪"
             btn.setTextColor(colorSuccess)
             btn.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
@@ -637,7 +792,7 @@ class MainActivity : AppCompatActivity() {
             }
             btn.isEnabled = false
         } else {
-            btn.text = "去开启"
+            btn.text ="去开启"
             btn.setTextColor(colorPrimary)
             btn.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
@@ -649,11 +804,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateEngineStateUi(state: EngineState) {
-        if (state == EngineState.IDLE) {
-            statusTextTv.text = "待命中 (随时出发)"
-        } else {
-            statusTextTv.text = state.title
-        }
+        statusTextTv.text = if (state == EngineState.IDLE) "待命中 (随时出发)" else state.title
 
         try {
             statusTextTv.setTextColor(Color.parseColor(state.indicatorColorHex))
@@ -662,23 +813,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         when {
-            // 风控熔断驻留态：主按钮变为人工解除熔断入口
             state == EngineState.EMERGENCY_STOP -> {
-                mainActionButton.text = "🩹 已确认账号正常，继续出发"
+                mainActionButton.text ="已确认账号正常，继续出发"
                 mainActionButton.background = GradientDrawable().apply {
                     cornerRadius = dp2px(14).toFloat()
                     setColor(Color.parseColor(state.indicatorColorHex))
                 }
             }
             state.isOperating() -> {
-                mainActionButton.text = "☕ 休息一下 (暂停中)"
+                mainActionButton.text ="休息一下 (暂停中)"
                 mainActionButton.background = GradientDrawable().apply {
                     cornerRadius = dp2px(14).toFloat()
                     setColor(Color.parseColor("#64748B"))
                 }
             }
             else -> {
-                mainActionButton.text = "🦌 出发，帮我盯岗位"
+                mainActionButton.text ="出发，帮我盯岗位"
                 mainActionButton.background = GradientDrawable().apply {
                     cornerRadius = dp2px(14).toFloat()
                     setColor(colorPrimary)
@@ -690,7 +840,6 @@ class MainActivity : AppCompatActivity() {
     private fun loadDashboardData(app: JobmateApp) {
         lifecycleScope.launch {
             val (todayChat, todayApplied, todayEvaluated, todayFiltered) = withContext(Dispatchers.IO) {
-                val db = app.database
                 val cal = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)
                     set(Calendar.MINUTE, 0)
@@ -700,11 +849,13 @@ class MainActivity : AppCompatActivity() {
                 val start = cal.timeInMillis
                 val end = System.currentTimeMillis()
 
-                val chats = db.jobDao().getCommunicatedCountBetween(start, end)
-                val applied = db.jobDao().getDeliveredCountBetween(start, end)
-                val evaluated = db.jobDao().getEvaluatedCountBetween(start, end)
-                val filtered = db.jobDao().getFilteredOutCountBetween(start, end)
-                TaskResult(chats, applied, evaluated, filtered)
+                val dao = app.database.jobDao()
+                DashboardStats(
+                    communicated = dao.getCommunicatedCountBetween(start, end),
+                    delivered = dao.getDeliveredCountBetween(start, end),
+                    evaluated = dao.getEvaluatedCountBetween(start, end),
+                    filtered = dao.getFilteredOutCountBetween(start, end)
+                )
             }
 
             communicatedCountTv.text = todayChat.toString()
@@ -714,12 +865,12 @@ class MainActivity : AppCompatActivity() {
 
             val maxCount = app.configRepository.getMaxDailyGreetings()
             val percent = if (maxCount > 0) minOf(100, (todayChat * 100) / maxCount) else 0
-            percentageTv.text = "$percent%"
+            percentageTv.text ="$percent%"
         }
     }
 
     /** 看板四项统计的轻量承载 */
-    private data class TaskResult(
+    private data class DashboardStats(
         val communicated: Int,
         val delivered: Int,
         val evaluated: Int,
@@ -730,7 +881,6 @@ class MainActivity : AppCompatActivity() {
         val app = application as JobmateApp
         val currentState = app.stateMachine.getCurrentState()
 
-        // 风控熔断驻留态：点击主按钮弹出人工恢复确认，不直接重启流水线
         if (currentState == EngineState.EMERGENCY_STOP) {
             showEmergencyRecoverDialog()
             return
@@ -749,13 +899,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (!BossAccessibilityService.isConnected()) {
-            Toast.makeText(this, "请先开启【敲门开路】权限", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,"请先开启【敲门开路】权限", Toast.LENGTH_SHORT).show()
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             return
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "请先开启【悄悄支招】权限", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,"请先开启【悄悄支招】权限", Toast.LENGTH_SHORT).show()
             startActivity(
                 Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -766,8 +916,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (!app.configRepository.hasValidApiKey()) {
-            Toast.makeText(this, "请先在【我的设置】中配置 DeepSeek Key", Toast.LENGTH_LONG).show()
-            startActivity(Intent(this, SettingsActivity::class.java))
+            Toast.makeText(this,"请先在【我的设置】中配置 DeepSeek Key", Toast.LENGTH_LONG).show()
+            selectTab(TAB_SETTINGS)
             return
         }
 
@@ -777,22 +927,19 @@ class MainActivity : AppCompatActivity() {
         if (bossIntent != null) {
             startActivity(bossIntent)
         } else {
-            Toast.makeText(this, "未检测到 Boss 直聘安装", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,"未检测到 Boss 直聘安装", Toast.LENGTH_SHORT).show()
         }
 
         FloatingHUDService.startService(this)
         app.taskDispatcher.start(warmUpDelayMs = 4000L)
         updateEngineStateUi(EngineState.SCANNING)
 
-        Toast.makeText(this, "🚀 求职搭子已出发，正在跳转 Boss 直聘...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this,"求职搭子已出发，正在跳转 Boss 直聘", Toast.LENGTH_SHORT).show()
     }
 
-    /**
-     * 风控熔断人工恢复确认：强制用户先自查账号状态，避免风控刚触发就无冷却继续投递
-     */
     private fun showEmergencyRecoverDialog() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("🚨 风控熔断确认")
+            .setTitle("风控熔断确认")
             .setMessage(
                 "求职搭子检测到风控信号后已自动刹车。\n\n" +
                     "建议先打开 Boss 直聘手动确认账号状态正常（无验证码、无功能限制），" +
@@ -814,8 +961,7 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val state = EngineState.valueOf(newState)
                     updateEngineStateUi(state)
-                    val app = application as JobmateApp
-                    loadDashboardData(app)
+                    loadDashboardData(application as JobmateApp)
                 } catch (e: Exception) {
                     // 容错
                 }
@@ -833,17 +979,346 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun createCardDrawable(): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp2px(18).toFloat()
-            setColor(colorCard)
-            setStroke(dp2px(1), colorCardStroke)
+    // ==================== 投递手账列表与详情 ====================
+
+    inner class HistoryAdapter(private val dataList: List<JobEntity>) :
+        RecyclerView.Adapter<HistoryAdapter.ViewHolder>() {
+
+        inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val titleTv: TextView = view.findViewWithTag("title")
+            val salaryTv: TextView = view.findViewWithTag("salary")
+            val companyTv: TextView = view.findViewWithTag("company")
+            val statusChip: TextView = view.findViewWithTag("status")
+            val reasonTv: TextView = view.findViewWithTag("reason")
+            val dimsTv: TextView = view.findViewWithTag("dims")
+            val scoreTv: TextView = view.findViewWithTag("score")
+            val timeTv: TextView = view.findViewWithTag("time")
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val card = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.VERTICAL
+                background = GradientDrawable().apply {
+                    cornerRadius = dp2px(16).toFloat()
+                    setColor(colorCard)
+                    setStroke(dp2px(1), colorCardStroke)
+                }
+                val p = dp2px(16)
+                setPadding(p, p, p, p)
+                layoutParams = RecyclerView.LayoutParams(
+                    RecyclerView.LayoutParams.MATCH_PARENT,
+                    RecyclerView.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    val m = dp2px(10)
+                    setMargins(0, dp2px(5), 0, m)
+                }
+            }
+
+            val row1 = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            row1.addView(TextView(parent.context).apply {
+                tag ="title"
+                textSize = 16f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(colorTextMain)
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            row1.addView(TextView(parent.context).apply {
+                tag ="salary"
+                textSize = 15f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(colorPrimary)
+                includeFontPadding = false
+            })
+            card.addView(row1)
+
+            val row2 = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(6) }
+            }
+            row2.addView(TextView(parent.context).apply {
+                tag ="company"
+                textSize = 12f
+                setTextColor(colorTextSub)
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginEnd = dp2px(8)
+                }
+            })
+            row2.addView(TextView(parent.context).apply {
+                tag ="status"
+                textSize = 11f
+                typeface = Typeface.DEFAULT_BOLD
+                includeFontPadding = false
+                setPadding(dp2px(8), dp2px(3), dp2px(8), dp2px(3))
+            })
+            card.addView(row2)
+
+            val bubble = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.VERTICAL
+                background = GradientDrawable().apply {
+                    cornerRadius = dp2px(10).toFloat()
+                    setColor(Color.parseColor("#F4F6F9"))
+                }
+                val bp = dp2px(10)
+                setPadding(bp, bp, bp, bp)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(10) }
+            }
+
+            bubble.addView(TextView(parent.context).apply {
+                tag ="reason"
+                textSize = 12f
+                setTextColor(colorTextBody)
+                setLineSpacing(dp2px(2).toFloat(), 1.0f)
+                maxLines = 4
+                includeFontPadding = false
+            })
+
+            bubble.addView(TextView(parent.context).apply {
+                tag ="dims"
+                textSize = 11f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.parseColor("#2E7BE6"))
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(6) }
+            })
+            card.addView(bubble)
+
+            val row4 = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(10) }
+            }
+            row4.addView(TextView(parent.context).apply {
+                tag ="time"
+                textSize = 11f
+                setTextColor(colorTextSub)
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            row4.addView(TextView(parent.context).apply {
+                tag ="score"
+                textSize = 11f
+                typeface = Typeface.DEFAULT_BOLD
+                includeFontPadding = false
+                setPadding(dp2px(6), dp2px(2), dp2px(6), dp2px(2))
+            })
+            card.addView(row4)
+
+            return ViewHolder(card)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val item = dataList[position]
+            holder.titleTv.text = item.title
+            holder.salaryTv.text = item.salaryText
+
+            val compName = item.companyName.trim()
+            val cityName = item.city.trim().ifBlank { "全国" }
+            holder.companyTv.text = if (compName.isNotEmpty()) "$compName · $cityName" else cityName
+
+            when (item.status) {
+                JobEntity.STATUS_DELIVERED -> {
+                    holder.statusChip.text ="已投递"
+                    holder.statusChip.setTextColor(colorSuccess)
+                    holder.statusChip.background = pillDrawable(colorSuccessSoft)
+                }
+                JobEntity.STATUS_COMMUNICATED -> {
+                    holder.statusChip.text ="已打招呼"
+                    holder.statusChip.setTextColor(colorPrimary)
+                    holder.statusChip.background = pillDrawable(colorPrimarySoft)
+                }
+                JobEntity.STATUS_EVALUATED -> {
+                    holder.statusChip.text ="契合度高"
+                    holder.statusChip.setTextColor(Color.parseColor("#2E7BE6"))
+                    holder.statusChip.background = pillDrawable("#EDF4FE")
+                }
+                JobEntity.STATUS_REJECTED -> {
+                    holder.statusChip.text ="已跳过"
+                    holder.statusChip.setTextColor(Color.parseColor("#6B7280"))
+                    holder.statusChip.background = pillDrawable("#EEF1F5")
+                }
+                JobEntity.STATUS_FILTERED_OUT -> {
+                    holder.statusChip.text ="规则过滤"
+                    holder.statusChip.setTextColor(Color.parseColor("#6B7280"))
+                    holder.statusChip.background = pillDrawable("#EEF1F5")
+                }
+                else -> {
+                    holder.statusChip.text = item.status
+                    holder.statusChip.setTextColor(colorTextSub)
+                    holder.statusChip.background = pillDrawable(colorCardStroke)
+                }
+            }
+
+            val cleanReason = item.evalReason.ifBlank { "正在分析岗位的契合度与潜在风险..." }
+            holder.reasonTv.text ="搭子评语：$cleanReason"
+
+            val threshold = AppSettings.getInstance(holder.itemView.context).getMatchScoreThreshold()
+            if (item.matchScore >= 0) {
+                holder.scoreTv.text ="契合度: ${item.matchScore}分"
+                if (item.matchScore >= threshold) {
+                    holder.scoreTv.setTextColor(colorSuccess)
+                    holder.scoreTv.background = pillDrawable(colorSuccessSoft)
+                } else {
+                    holder.scoreTv.setTextColor(colorTextSub)
+                    holder.scoreTv.background = pillDrawable(colorCardStroke)
+                }
+            } else {
+                holder.scoreTv.text ="契合度: --"
+                holder.scoreTv.setTextColor(colorTextSub)
+                holder.scoreTv.background = null
+            }
+
+            if (item.techScore >= 0 && item.experienceScore >= 0 &&
+                item.salaryScore >= 0 && item.stabilityScore >= 0
+            ) {
+                holder.dimsTv.visibility = View.VISIBLE
+                holder.dimsTv.text =
+                    "技${item.techScore} · 验${item.experienceScore} · 薪${item.salaryScore} · 稳${item.stabilityScore}"
+            } else {
+                holder.dimsTv.visibility = View.GONE
+            }
+
+            val sdf = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
+            holder.timeTv.text = sdf.format(Date(item.updatedAt))
+
+            holder.itemView.setOnClickListener { showJobDetailDialog(item) }
+        }
+
+        override fun getItemCount(): Int = dataList.size
+
+        private fun pillDrawable(bgHex: String): GradientDrawable {
+            return GradientDrawable().apply {
+                cornerRadius = dp2px(100).toFloat()
+                setColor(Color.parseColor(bgHex))
+            }
         }
     }
 
-    private fun dp2px(dp: Int): Int {
-        val density = resources.displayMetrics.density
-        return (dp * density + 0.5f).toInt()
+    /** 点击记录卡片时展示完整详情：评分四维、评语全文、JD 原文与 HR 活跃状态 */
+    private fun showJobDetailDialog(item: JobEntity) {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val p = dp2px(20)
+            setPadding(p, dp2px(12), p, dp2px(8))
+        }
+
+        fun addLabel(text: String): TextView = TextView(this).apply {
+            this.text = text
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorTextSub)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(14) }
+        }
+
+        fun addBody(text: String, isPrimary: Boolean = false): TextView = TextView(this).apply {
+            this.text = text
+            textSize = if (isPrimary) 14f else 13f
+            if (isPrimary) typeface = Typeface.DEFAULT_BOLD
+            setTextColor(if (isPrimary) colorPrimary else colorTextBody)
+            setLineSpacing(dp2px(3).toFloat(), 1.0f)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(4) }
+        }
+
+        content.addView(TextView(this).apply {
+            text = item.title
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorTextMain)
+            includeFontPadding = false
+        })
+
+        content.addView(TextView(this).apply {
+            text = item.salaryText
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorPrimary)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(4) }
+        })
+
+        val compName = item.companyName.trim()
+        val cityName = item.city.trim().ifBlank { "全国" }
+        content.addView(addBody("$compName · $cityName"))
+
+        val sdf = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
+        content.addView(addBody("更新于 ${sdf.format(Date(item.updatedAt))} · ${describeStatus(item.status)}"))
+
+        if (item.matchScore >= 0) {
+            content.addView(addLabel("契合度评分"))
+            val threshold = AppSettings.getInstance(this).getMatchScoreThreshold()
+            val passText = if (item.matchScore >= threshold) "达标" else "未达标"
+            content.addView(addBody("综合 ${item.matchScore} 分（录取阈值 $threshold 分，$passText）", isPrimary = true))
+
+            if (item.techScore >= 0 && item.experienceScore >= 0 &&
+                item.salaryScore >= 0 && item.stabilityScore >= 0
+            ) {
+                content.addView(addBody(
+                    "技术栈 ${item.techScore} · 经验年限 ${item.experienceScore} · 薪资 ${item.salaryScore} · 稳定性 ${item.stabilityScore}"
+                ))
+            }
+        }
+
+        content.addView(addLabel("搭子评语"))
+        content.addView(addBody(item.evalReason.ifBlank { "暂无评语" }))
+
+        if (item.hrName.isNotBlank() || item.hrActiveStatus.isNotBlank()) {
+            content.addView(addLabel("HR 信息"))
+            val hrLine = buildString {
+                if (item.hrName.isNotBlank()) append(item.hrName)
+                if (item.hrTitle.isNotBlank()) append(" · ${item.hrTitle}")
+                if (item.hrActiveStatus.isNotBlank()) append("（${item.hrActiveStatus}）")
+            }
+            content.addView(addBody(hrLine))
+        }
+
+        content.addView(addLabel("岗位 JD 全文"))
+        content.addView(addBody(item.jobDescription.ifBlank { "未抓取到详情内容" }))
+
+        val scrollView = ScrollView(this).apply {
+            addView(content)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("岗位详情")
+            .setView(scrollView)
+            .setPositiveButton("关闭", null)
+            .show()
+    }
+
+    private fun describeStatus(status: String): String = when (status) {
+        JobEntity.STATUS_DELIVERED -> "已投递"
+        JobEntity.STATUS_COMMUNICATED -> "已打招呼"
+        JobEntity.STATUS_EVALUATED -> "契合度高"
+        JobEntity.STATUS_REJECTED -> "已跳过"
+        JobEntity.STATUS_FILTERED_OUT -> "规则过滤"
+        else -> status
     }
 }

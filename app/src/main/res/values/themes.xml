@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 应用统一主题：无原生 ActionBar + 状态栏与内容背景同色（浅色图标），实现一体化观感 -->
+    <style name="Theme.Jobmate" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/theme_status_bar</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/theme_nav_bar</item>
+    </style>
+</resources>

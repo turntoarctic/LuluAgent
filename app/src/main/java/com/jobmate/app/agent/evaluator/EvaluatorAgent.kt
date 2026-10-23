@@ -23,7 +23,7 @@ class EvaluatorAgent(
 
     override fun start() {
         super.start()
-        sendAgentLog("🧠 决策参谋已就位，开启双引擎分析体系")
+        sendAgentLog("决策参谋已就位，开启双引擎分析体系")
     }
 
     /**
@@ -40,7 +40,7 @@ class EvaluatorAgent(
         val preCheck = localPreFilter.check(rawJob)
         if (preCheck is LocalPreFilter.FilterResult.Reject) {
             val rejectReason = preCheck.reason
-            sendAgentLog("⛔ 本地规则拦截: $rejectReason (节省Token)")
+            sendAgentLog("本地规则拦截: $rejectReason (节省Token)")
 
             // 登记数据库为过滤状态
             jobRepository.recordDiscoveredJob(rawJob.toJobEntity(JobEntity.STATUS_FILTERED_OUT))
@@ -53,7 +53,7 @@ class EvaluatorAgent(
         jobRepository.recordDiscoveredJob(rawJob.toJobEntity(JobEntity.STATUS_DISCOVERED))
 
         // 3. DeepSeek 大模型深度语义打分
-        sendAgentLog("🚀 呈送 DeepSeek 进行深度技术栈与风险推演...")
+        sendAgentLog("呈送 DeepSeek 进行深度技术栈与风险推演...")
         val llmResult = deepSeekClient.evaluateJob(rawJob)
 
         return llmResult.fold(
@@ -86,9 +86,9 @@ class EvaluatorAgent(
                     " (技${response.techMatch}·验${response.experienceMatch}·薪${response.salaryMatch}·稳${response.stability}$bonusText)"
                 } else ""
                 val logText = if (result.isApproved) {
-                    "🎯 评估通过！综合${result.matchScore}分$dimsText | ${result.summaryReason}"
+                    "评估通过！综合${result.matchScore}分$dimsText | ${result.summaryReason}"
                 } else {
-                    "⚠️ 评估放弃。综合${result.matchScore}分$dimsText | 原因: ${result.summaryReason}"
+                    "评估放弃。综合${result.matchScore}分$dimsText | 原因: ${result.summaryReason}"
                 }
                 sendAgentLog(logText, isHighlight = result.isApproved)
 
@@ -96,7 +96,7 @@ class EvaluatorAgent(
             },
             onFailure = { error ->
                 val errReason = error.message ?: "网络请求失败"
-                sendAgentLog("❌ 评估异常: $errReason")
+                sendAgentLog("评估异常: $errReason")
                 EvaluatorResult.fromError(rawJob, errReason)
             }
         )

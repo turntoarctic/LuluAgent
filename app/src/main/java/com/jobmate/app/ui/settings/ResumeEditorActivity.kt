@@ -28,11 +28,11 @@ class ResumeEditorActivity : AppCompatActivity() {
     private val colorBg = Color.parseColor("#F8F9FB")
     private val colorCard = Color.WHITE
     private val colorCardStroke = Color.parseColor("#F0F2F5")
-    private val colorPrimary = Color.parseColor("#274DEA")       // 湛蓝主色
-    private val colorPrimarySoft = Color.parseColor("#E9EDFC")   // 极淡雾蓝
-    private val colorTextMain = Color.parseColor("#1F2329")      // 高阶石板黑
-    private val colorTextSub = Color.parseColor("#8F959E")       // 优雅次级灰
-    private val colorInputBg = Color.parseColor("#F4F6F9")       // 输入框浅底色
+    private val colorPrimary = Color.parseColor("#274DEA") // 湛蓝主色
+    private val colorPrimarySoft = Color.parseColor("#E9EDFC") // 极淡雾蓝
+    private val colorTextMain = Color.parseColor("#1F2329") // 高阶石板黑
+    private val colorTextSub = Color.parseColor("#8F959E") // 优雅次级灰
+    private val colorInputBg = Color.parseColor("#F4F6F9") // 输入框浅底色
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,7 +75,7 @@ class ResumeEditorActivity : AppCompatActivity() {
         }
 
         val descTv = TextView(this).apply {
-            text = "📝 请填入你的个人简历（建议 Markdown 格式）。DeepSeek 会根据你的真实技术栈与项目成果对目标岗位进行契合度打分，并构思针对性的破冰开场白。"
+            text = "请填入你的个人简历（建议 Markdown 格式）。DeepSeek 会根据你的真实技术栈与项目成果对目标岗位进行契合度打分，并构思针对性的破冰开场白。"
             textSize = 12f
             setTextColor(colorTextSub)
             setLineSpacing(dp2px(3).toFloat(), 1.0f)
@@ -94,7 +94,7 @@ class ResumeEditorActivity : AppCompatActivity() {
         }
 
         val templateBtn = TextView(this).apply {
-            text = "📋 填入参考模板"
+            text = "填入参考模板"
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
@@ -113,7 +113,7 @@ class ResumeEditorActivity : AppCompatActivity() {
         }
 
         val saveBtn = TextView(this).apply {
-            text = "💾 保存简历"
+            text = "保存简历"
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
@@ -197,7 +197,7 @@ class ResumeEditorActivity : AppCompatActivity() {
             }
 
             val title = TextView(this@ResumeEditorActivity).apply {
-                text = "个人简历与背景设定 📝"
+                text = "个人简历与背景设定"
                 textSize = 18f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(colorTextMain)
