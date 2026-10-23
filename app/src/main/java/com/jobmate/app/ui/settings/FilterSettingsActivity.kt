@@ -37,6 +37,14 @@ class FilterSettingsActivity : AppCompatActivity() {
     private var selectedPreference: String = AppSettings.SCORE_PREF_BALANCED
     private val preferencePills = LinkedHashMap<String, TextView>()
 
+    // 自定义权重滑杆区
+    private lateinit var customWeightsContainer: LinearLayout
+    private val weightNames = listOf("技术栈", "经验年限", "薪资待遇", "稳定性")
+    private val weightSeekBars = mutableListOf<SeekBar>()
+    private val weightValueTvs = mutableListOf<TextView>()
+    private var weightValues = intArrayOf(50, 20, 15, 15)
+    private var syncingWeights = false
+
     // 规范视觉色盘 (与 ApiKeyConfigActivity 保持一致)
     private val colorBg = Color.parseColor("#F8F9FB")
     private val colorCard = Color.WHITE
@@ -267,6 +275,18 @@ class FilterSettingsActivity : AppCompatActivity() {
         card.addView(prefRow1)
         card.addView(prefRow2)
 
+        val prefRow3 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(8) }
+        }
+        prefRow3.addView(createPreferencePill(AppSettings.SCORE_PREF_CUSTOM))
+        card.addView(prefRow3)
+
+        card.addView(createCustomWeightsSection())
+
         prefDescTv = TextView(this).apply {
             textSize = 11f
             setTextColor(colorTextSub)
@@ -413,7 +433,140 @@ class FilterSettingsActivity : AppCompatActivity() {
                 pill.setTextColor(colorTextSub)
             }
         }
-        prefDescTv.text = "当前权重：${ScorePolicy.describeWeights(selectedPreference)}"
+        prefDescTv.text = if (selectedPreference == AppSettings.SCORE_PREF_CUSTOM)
+            "自定义配比生效中，四维按下方滑杆权重加权合成"
+        else
+            "当前权重：${ScorePolicy.describeWeights(selectedPreference)}"
+        customWeightsContainer.visibility =
+            if (selectedPreference == AppSettings.SCORE_PREF_CUSTOM) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * 自定义权重滑杆区 (默认隐藏，选中「自定义」偏好时展开)
+     * 联动规则：拖动任意滑杆，其余三维按现有比例自动让出权重，总和恒为 100%
+     */
+    private fun createCustomWeightsSection(): View {
+        customWeightsContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(14) }
+        }
+
+        customWeightsContainer.addView(TextView(this).apply {
+            text = "自定义权重配比"
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorPrimaryDark)
+            includeFontPadding = false
+        })
+        customWeightsContainer.addView(TextView(this).apply {
+            text = "拖动任意滑杆，其余三维按比例自动让出，总和恒为 100%"
+            textSize = 11f
+            setTextColor(colorTextTip)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(4) }
+        })
+
+        for (i in weightNames.indices) {
+            val valueRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(12) }
+            }
+            valueRow.addView(TextView(this).apply {
+                text = weightNames[i]
+                textSize = 12f
+                setTextColor(colorTextMain)
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            val valueTv = TextView(this).apply {
+                text = "${weightValues[i]}%"
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(colorPrimaryDark)
+                includeFontPadding = false
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    cornerRadius = dp2px(100).toFloat()
+                    setColor(colorPrimarySoft)
+                }
+                setPadding(dp2px(10), dp2px(3), dp2px(10), dp2px(3))
+            }
+            valueRow.addView(valueTv)
+            weightValueTvs.add(valueTv)
+            customWeightsContainer.addView(valueRow)
+
+            val seekBar = SeekBar(this).apply {
+                max = 100
+                progress = weightValues[i]
+                thumbOffset = dp2px(2)
+                setPadding(0, dp2px(4), 0, dp2px(4))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
+                        if (fromUser) onCustomWeightChanged(i, progress)
+                    }
+                    override fun onStartTrackingTouch(bar: SeekBar?) {}
+                    override fun onStopTrackingTouch(bar: SeekBar?) {}
+                })
+            }
+            seekBar.progressDrawable?.setColorFilter(colorPrimary, android.graphics.PorterDuff.Mode.SRC_ATOP)
+            seekBar.thumb?.setColorFilter(colorPrimaryDark, android.graphics.PorterDuff.Mode.SRC_ATOP)
+            weightSeekBars.add(seekBar)
+            customWeightsContainer.addView(seekBar)
+        }
+        return customWeightsContainer
+    }
+
+    /** 联动核心：被拖动维度取新值，其余三维按现有比例缩放让位，总和恒 100 */
+    private fun onCustomWeightChanged(changedIndex: Int, newValue: Int) {
+        if (syncingWeights) return
+        syncingWeights = true
+
+        weightValues[changedIndex] = newValue.coerceIn(0, 100)
+        val remaining = 100 - weightValues[changedIndex]
+        val others = (0..3).filter { it != changedIndex }
+        val othersSum = others.sumOf { weightValues[it] }
+
+        if (othersSum == 0) {
+            val base = remaining / others.size
+            var extra = remaining % others.size
+            for (oi in others) {
+                weightValues[oi] = base + if (extra > 0) 1 else 0
+                if (extra > 0) extra--
+            }
+        } else {
+            var allocated = 0
+            others.forEachIndexed { i, oi ->
+                weightValues[oi] = if (i < others.size - 1) {
+                    Math.round(weightValues[oi].toFloat() * remaining / othersSum)
+                } else {
+                    remaining - allocated
+                }
+                allocated += weightValues[oi]
+            }
+        }
+
+        others.forEach { oi ->
+            weightSeekBars[oi].progress = weightValues[oi]
+            weightValueTvs[oi].text = "${weightValues[oi]}%"
+        }
+        weightValueTvs[changedIndex].text = "${weightValues[changedIndex]}%"
+
+        syncingWeights = false
     }
 
     private fun loadCurrentSettings() {
@@ -422,6 +575,12 @@ class FilterSettingsActivity : AppCompatActivity() {
         thresholdValueTv.text = "$threshold 分"
 
         selectedPreference = configRepository.getScorePreference()
+        val savedCustom = configRepository.getCustomWeights()
+        for (i in weightValues.indices) {
+            weightValues[i] = savedCustom[i].coerceIn(0, 100)
+            weightSeekBars[i].progress = weightValues[i]
+            weightValueTvs[i].text = "${weightValues[i]}%"
+        }
         refreshPreferencePills()
 
         val minSalaryK = configRepository.getMinSalaryFilterK()
@@ -434,6 +593,11 @@ class FilterSettingsActivity : AppCompatActivity() {
         val threshold = (thresholdSeekBar.progress + MIN_THRESHOLD).coerceIn(MIN_THRESHOLD, MAX_THRESHOLD)
         configRepository.setMatchScoreThreshold(threshold)
         configRepository.setScorePreference(selectedPreference)
+        if (selectedPreference == AppSettings.SCORE_PREF_CUSTOM) {
+            configRepository.setCustomWeights(
+                weightValues[0], weightValues[1], weightValues[2], weightValues[3]
+            )
+        }
 
         val salaryK = minSalaryInput.text.toString().trim().toIntOrNull() ?: 0
         configRepository.setMinSalaryFilterK(salaryK.coerceIn(0, 999))

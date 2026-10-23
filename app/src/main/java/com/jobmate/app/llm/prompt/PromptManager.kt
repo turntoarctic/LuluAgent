@@ -58,10 +58,10 @@ class PromptManager(
         )
 
         return DeepSeekChatRequest.buildJsonRequest(
-            systemPrompt = IcebreakGreetingPrompt.SYSTEM_PROMPT,
+            systemPrompt = IcebreakGreetingPrompt.systemPrompt(configRepository.getGreetingStyle()),
             userPrompt = userPrompt,
             model = model,
-            temperature = 0.5 // 生成话术使用适中温度，增强行文灵活性
+            temperature = 0.7 // 生成话术使用较高温度，增强行文灵活性与个性化
         )
     }
 }

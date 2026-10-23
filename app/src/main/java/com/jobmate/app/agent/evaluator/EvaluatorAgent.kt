@@ -61,8 +61,12 @@ class EvaluatorAgent(
                 // 0. 清洗 LLM 输出的越界分数
                 val response = rawResponse.sanitized()
 
-                // 1. 四维加权合成综合分 (用户偏好权重 + HR 高活跃本地加分)
-                val weights = ScorePolicy.weightsFor(configRepository.getScorePreference())
+                // 1. 四维加权合成综合分 (用户偏好/自定义权重 + HR 高活跃本地加分)
+                val custom = configRepository.getCustomWeights()
+                val weights = ScorePolicy.weightsFor(
+                    configRepository.getScorePreference(),
+                    ScorePolicy.Weights(custom[0], custom[1], custom[2], custom[3])
+                )
                 val hrBonus = localPreFilter.computeHrActivityBonus(rawJob.hrActiveStatus)
                 val compositeScore = ScorePolicy.composeFinalScore(response, weights, hrBonus)
                 val threshold = configRepository.getMatchScoreThreshold()

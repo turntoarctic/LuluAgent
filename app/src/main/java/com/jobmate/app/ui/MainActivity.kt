@@ -11,10 +11,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.ScrollView
@@ -91,8 +95,20 @@ class MainActivity : AppCompatActivity() {
     // 投递手账视图引用
     private lateinit var recordsRecyclerView: RecyclerView
     private lateinit var recordsEmptyTv: TextView
+    private lateinit var recordsSearchInput: EditText
+    private lateinit var weekStatsTv: TextView
+    private lateinit var filterChipsRow: LinearLayout
     private val records = mutableListOf<JobEntity>()
-    private val recordsAdapter by lazy { HistoryAdapter(records) }
+    private val recordsFiltered = mutableListOf<JobEntity>()
+    private val recordsAdapter by lazy { HistoryAdapter(recordsFiltered) }
+    private var selectedFilterIndex = 0
+    private val statusFilters = listOf("全部", "已投递", "已打招呼", "契合度高", "已跳过", "规则过滤")
+
+    // 设置页新增视图
+    private lateinit var costAmountTv: TextView
+    private lateinit var costProgressFill: View
+    private lateinit var costHintTv: TextView
+    private lateinit var styleDescTv: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -639,8 +655,8 @@ class MainActivity : AppCompatActivity() {
             }
             records.clear()
             records.addAll(list)
-            recordsAdapter.notifyDataSetChanged()
-            recordsEmptyTv.visibility = if (records.isEmpty()) View.VISIBLE else View.GONE
+            applyRecordFilters()
+            loadWeekStats()
         }
     }
 
@@ -694,7 +710,7 @@ class MainActivity : AppCompatActivity() {
         title: String,
         desc: String,
         onClick: () -> Unit
-    ): View {
+    ): Pair<View, TextView> {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -736,6 +752,156 @@ class MainActivity : AppCompatActivity() {
             includeFontPadding = false
         })
         return row
+    }
+
+    // ==================== 设置页：成本仪表盘与破冰风格 ====================
+
+    /** 今日 AI 消耗卡片：金额 + 预算进度条 */
+    private fun buildCostDashboardCard(): View {
+        val card = createCardContainer().apply {
+            setPadding(dp2px(16), dp2px(16), dp2px(16), dp2px(16))
+        }
+
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        headerRow.addView(TextView(this).apply {
+            text = "今日 AI 消耗"
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorTextSub)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        headerRow.addView(TextView(this).apply {
+            text = "DeepSeek 深度研判消耗"
+            textSize = 10f
+            setTextColor(colorTextSub)
+            includeFontPadding = false
+        })
+        card.addView(headerRow)
+
+        costAmountTv = TextView(this).apply {
+            text = "¥0.00"
+            textSize = 26f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorTextMain)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(8) }
+        }
+        card.addView(costAmountTv)
+
+        // 自绘进度条：灰底轨道 + 主色填充
+        val trackHeight = dp2px(8)
+        val track = FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = trackHeight.toFloat()
+                setColor(Color.parseColor("#EDF0F5"))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                trackHeight
+            ).apply { topMargin = dp2px(12) }
+        }
+        costProgressFill = View(this).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = trackHeight.toFloat()
+                setColor(colorPrimary)
+            }
+            layoutParams = FrameLayout.LayoutParams(0, trackHeight)
+        }
+        track.addView(costProgressFill)
+        card.addView(track)
+
+        costHintTv = TextView(this).apply {
+            text = ""
+            textSize = 11f
+            setTextColor(colorTextSub)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(8) }
+        }
+        card.addView(costHintTv)
+
+        return card
+    }
+
+    private fun loadCostDashboard() {
+        lifecycleScope.launch {
+            val app = application as JobmateApp
+            val cost = withContext(Dispatchers.IO) { app.tokenUsageTracker.todayCostRmb() }
+            val budget = app.tokenUsageTracker.budgetRmb()
+
+            costAmountTv.text = String.format(Locale.getDefault(), "¥%.2f", cost)
+            val ratio = if (budget > 0) (cost / budget).coerceIn(0.0, 1.0) else 0.0
+
+            val trackWidth = costProgressFill.parent.let { (it as View).width }
+            val fillPx = if (trackWidth > 0) (trackWidth * ratio).toInt() else 0
+            costProgressFill.layoutParams = FrameLayout.LayoutParams(
+                fillPx, costProgressFill.layoutParams.height
+            )
+            costProgressFill.requestLayout()
+
+            // 占用色阶：正常主色 -> 接近预算蓝灰 -> 超限玫红
+            val fillColor = when {
+                ratio >= 1.0 -> Color.parseColor("#E11D48")
+                ratio >= 0.8 -> Color.parseColor("#64748B")
+                else -> colorPrimary
+            }
+            (costProgressFill.background as? GradientDrawable)?.setColor(fillColor)
+            costAmountTv.setTextColor(if (ratio >= 1.0) Color.parseColor("#E11D48") else colorTextMain)
+
+            costHintTv.text = when {
+                ratio >= 1.0 -> "已达每日预算 ¥${"%.2f".format(budget)}，评估已自动熔断，明日自动恢复"
+                ratio >= 0.8 -> "接近每日预算 ¥${"%.2f".format(budget)}，约剩 ¥${"%.2f".format((budget - cost).coerceAtLeast(0.0))}"
+                else -> "每日预算 ¥${"%.2f".format(budget)}，已使用 ${(ratio * 100).toInt()}%"
+            }
+        }
+    }
+
+    private fun currentGreetingStyleDesc(): String {
+        val style = (application as JobmateApp).configRepository.getGreetingStyle()
+        val hint = when (style) {
+            AppSettings.GREETING_STYLE_FRIENDLY -> "像同行朋友内推，自然有温度"
+            AppSettings.GREETING_STYLE_TECHNICAL -> "极简克制，用硬核细节说话"
+            else -> "沉稳专业，像资深工程师问候同行"
+        }
+        return "当前：$style · $hint"
+    }
+
+    private fun showGreetingStyleDialog() {
+        val styles = listOf(
+            AppSettings.GREETING_STYLE_FORMAL,
+            AppSettings.GREETING_STYLE_FRIENDLY,
+            AppSettings.GREETING_STYLE_TECHNICAL
+        )
+        val current = (application as JobmateApp).configRepository.getGreetingStyle()
+        val checkedIndex = styles.indexOf(current).coerceAtLeast(0)
+        val hintLines = listOf(
+            "沉稳专业，像资深工程师问候同行",
+            "像同行朋友内推，自然有温度",
+            "极简克制，用硬核技术细节说话"
+        )
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("破冰语风格")
+            .setSingleChoiceItems(
+                styles.mapIndexed { i, s -> "$s · ${hintLines[i]}" }.toTypedArray(),
+                checkedIndex
+            ) { dialog, which ->
+                (application as JobmateApp).configRepository.setGreetingStyle(styles[which])
+                styleDescTv.text = currentGreetingStyleDesc()
+                dialog.dismiss()
+                Toast.makeText(this, "破冰语风格已切换为「${styles[which]}」，下一轮沟通生效", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun requestIgnoreBatteryOptimization() {

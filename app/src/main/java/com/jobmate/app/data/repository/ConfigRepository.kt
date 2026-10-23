@@ -37,4 +37,11 @@ class ConfigRepository(
 
     fun isPaused(): Boolean = appSettings.isPaused()
     fun setPaused(paused: Boolean) = appSettings.setPaused(paused)
+
+    fun getGreetingStyle(): String = appSettings.getGreetingStyle()
+    fun setGreetingStyle(style: String) = appSettings.setGreetingStyle(style)
+
+    fun getCustomWeights(): IntArray = appSettings.getCustomWeights()
+    fun setCustomWeights(tech: Int, experience: Int, salary: Int, stability: Int) =
+        appSettings.setCustomWeights(tech, experience, salary, stability)
 }

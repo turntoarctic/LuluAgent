@@ -66,6 +66,31 @@ class AppSettings(context: Context) {
     fun isPaused(): Boolean = prefs.getBoolean(KEY_IS_PAUSED, false)
     fun setPaused(paused: Boolean) = prefs.edit().putBoolean(KEY_IS_PAUSED, paused).apply()
 
+    /**
+     * 破冰语风格：正式 / 轻松 / 技术流，决定 DeepSeek 生成话术的语气人设
+     */
+    fun getGreetingStyle(): String = prefs.getString(KEY_GREETING_STYLE, GREETING_STYLE_FORMAL) ?: GREETING_STYLE_FORMAL
+    fun setGreetingStyle(style: String) = prefs.edit().putString(KEY_GREETING_STYLE, style).apply()
+
+    /**
+     * 自定义四维权重 (百分制，四项之和应为 100)，评分偏好选「自定义」时生效
+     */
+    fun getCustomWeights(): IntArray = intArrayOf(
+        prefs.getInt(KEY_CUSTOM_W_TECH, 50),
+        prefs.getInt(KEY_CUSTOM_W_EXP, 20),
+        prefs.getInt(KEY_CUSTOM_W_SALARY, 15),
+        prefs.getInt(KEY_CUSTOM_W_STABILITY, 15)
+    )
+
+    fun setCustomWeights(tech: Int, experience: Int, salary: Int, stability: Int) {
+        prefs.edit()
+            .putInt(KEY_CUSTOM_W_TECH, tech)
+            .putInt(KEY_CUSTOM_W_EXP, experience)
+            .putInt(KEY_CUSTOM_W_SALARY, salary)
+            .putInt(KEY_CUSTOM_W_STABILITY, stability)
+            .apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "boss_agent_settings"
         private const val KEY_SLIDE_RATE = "slideRate"
@@ -84,6 +109,12 @@ class AppSettings(context: Context) {
         const val SCORE_PREF_TECH_FIRST = "技术优先"
         const val SCORE_PREF_SALARY_FIRST = "薪资优先"
         const val SCORE_PREF_STABILITY_FIRST = "稳字当先"
+        const val SCORE_PREF_CUSTOM = "自定义"
+
+        // 破冰语风格常量
+        const val GREETING_STYLE_FORMAL = "正式"
+        const val GREETING_STYLE_FRIENDLY = "轻松"
+        const val GREETING_STYLE_TECHNICAL = "技术流"
 
         @Volatile
         private var instance: AppSettings? = null

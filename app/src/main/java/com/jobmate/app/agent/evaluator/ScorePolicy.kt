@@ -26,13 +26,14 @@ object ScorePolicy {
     val DEFAULT_WEIGHTS = Weights(50, 20, 15, 15)
 
     /**
-     * 按用户评分偏好取权重：未知偏好回退均衡档
+     * 按用户评分偏好取权重：自定义档使用用户滑杆配比，未知偏好回退均衡档
      */
-    fun weightsFor(preference: String): Weights {
+    fun weightsFor(preference: String, custom: Weights? = null): Weights {
         return when (preference) {
             AppSettings.SCORE_PREF_TECH_FIRST -> Weights(65, 15, 10, 10)
             AppSettings.SCORE_PREF_SALARY_FIRST -> Weights(40, 15, 30, 15)
             AppSettings.SCORE_PREF_STABILITY_FIRST -> Weights(40, 15, 15, 30)
+            AppSettings.SCORE_PREF_CUSTOM -> custom ?: DEFAULT_WEIGHTS
             AppSettings.SCORE_PREF_BALANCED -> DEFAULT_WEIGHTS
             else -> DEFAULT_WEIGHTS
         }
@@ -41,8 +42,8 @@ object ScorePolicy {
     /**
      * 权重配比的人类可读描述 (设置页展示用)
      */
-    fun describeWeights(preference: String): String {
-        val w = weightsFor(preference)
+    fun describeWeights(preference: String, custom: Weights? = null): String {
+        val w = weightsFor(preference, custom)
         return "技术${w.tech}% · 经验${w.experience}% · 薪资${w.salary}% · 稳定${w.stability}%"
     }
 
