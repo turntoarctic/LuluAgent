@@ -75,3 +75,49 @@ jobs:
             app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
+
+  # 构建+签名校验通过后，自动创建 GitHub Release 并附上带版本号的签名 APK
+  # 幂等保护：tag 已存在（同版本号重复推送）时跳过，不报错
+  release:
+    name: Auto Create Release
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Read Version Name
+        id: ver
+        run: echo "version=$(grep -oP 'versionName\s*=\s*"\K[0-9.]+' app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
+      - name: Download Built APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: Jobmate-apks
+          path: apks
+
+      - name: Create Release with Signed APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          TAG="v${VERSION}"
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::Release ${TAG} 已存在，跳过创建（同版本号重复推送）"
+            exit 0
+          fi
+          mkdir -p dist
+          cp "apks/release/"*.apk "dist/Jobmate-v${VERSION}-release-signed.apk"
+          if [ -d apks/debug ] && ls "apks/debug/"*.apk >/dev/null 2>&1; then
+            cp "apks/debug/"*.apk "dist/Jobmate-v${VERSION}-debug.apk"
+          fi
+          ls -l dist/
+          gh release create "$TAG" dist/*.apk \
+            -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "求职搭子 v${VERSION}" \
+            --generate-notes
+          echo "✅ Release ${TAG} 已自动发布"
