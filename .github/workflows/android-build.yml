@@ -51,7 +51,8 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           # Secret 未单独配置 KEY_ALIAS 时回退到默认别名 lulu
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'lulu' }}
-        run: gradle assembleDebug assembleRelease --no-daemon --stacktrace
+        # 单元测试门禁：任何纯逻辑单测失败则整体构建失败，杜绝带病打包
+        run: gradle testDebugUnitTest assembleDebug assembleRelease --no-daemon --stacktrace
 
       # 【核心门禁】Release 包必须是正式签名：unsigned 文件名直接判败 + apksigner 校验证书指纹
       - name: Verify Release Signature

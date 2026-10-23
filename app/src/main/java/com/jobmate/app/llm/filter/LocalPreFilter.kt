@@ -97,25 +97,27 @@ class LocalPreFilter(
         return null
     }
 
-    /**
-     * 解析用户自定义排除关键词原文 (支持逗号/顿号/分号/换行分隔)
-     */
-    fun parseKeywordList(raw: String): List<String> {
-        return raw.split(',', '，', '、', ';', '；', '\n')
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-    }
+    companion object {
+        /**
+         * 解析用户自定义排除关键词原文 (支持逗号/顿号/分号/换行分隔)
+         */
+        fun parseKeywordList(raw: String): List<String> {
+            return raw.split(',', '，', '、', ';', '；', '\n')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+        }
 
-    /**
-     * HR 高活跃度本地加分信号：刚刚/在线/今日活跃 +2 分，其余 0 分
-     * (长期失联岗位已在 check() 中硬过滤，此处只做正向激励)
-     */
-    fun computeHrActivityBonus(hrActiveStatus: String): Int {
-        return when {
-            hrActiveStatus.contains("刚刚") ||
-                hrActiveStatus.contains("在线") ||
-                hrActiveStatus.contains("今日") -> 2
-            else -> 0
+        /**
+         * HR 高活跃度本地加分信号：刚刚/在线/今日活跃 +2 分，其余 0 分
+         * (长期失联岗位已在 check() 中硬过滤，此处只做正向激励)
+         */
+        fun computeHrActivityBonus(hrActiveStatus: String): Int {
+            return when {
+                hrActiveStatus.contains("刚刚") ||
+                    hrActiveStatus.contains("在线") ||
+                    hrActiveStatus.contains("今日") -> 2
+                else -> 0
+            }
         }
     }
 }

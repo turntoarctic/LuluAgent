@@ -67,7 +67,7 @@ class EvaluatorAgent(
                     configRepository.getScorePreference(),
                     ScorePolicy.Weights(custom[0], custom[1], custom[2], custom[3])
                 )
-                val hrBonus = localPreFilter.computeHrActivityBonus(rawJob.hrActiveStatus)
+                val hrBonus = LocalPreFilter.computeHrActivityBonus(rawJob.hrActiveStatus)
                 val compositeScore = ScorePolicy.composeFinalScore(response, weights, hrBonus)
                 val threshold = configRepository.getMatchScoreThreshold()
                 val result = EvaluatorResult.fromLLMResponse(rawJob, response, compositeScore, threshold)

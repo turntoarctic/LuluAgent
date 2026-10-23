@@ -53,6 +53,11 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    testOptions {
+        // 纯 JVM 单测中让 android.util.Log 等桩方法返回默认值而非抛异常，
+        // 使 StateMachine 等含日志调用的纯逻辑类可直接测试
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -79,4 +84,7 @@ dependencies {
 
     // 加密存储 (存放 DeepSeek API Key 与简历)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // 单元测试
+    testImplementation("junit:junit:4.13.2")
 }
