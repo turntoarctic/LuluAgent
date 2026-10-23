@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#274DEA</color>
+    <!-- 注意:ic_launcher_background 定义于 ic_launcher_background.xml,勿在此重复声明 -->
     <color name="theme_status_bar">#F8F9FB</color>
     <color name="theme_nav_bar">#FFFFFF</color>
 </resources>
