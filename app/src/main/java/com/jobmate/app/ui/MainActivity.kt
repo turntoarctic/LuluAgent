@@ -301,8 +301,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildPreparednessCard(): View {
-        val card = createCardContainer()
-            .setPadding(dp2px(16), dp2px(16), dp2px(16), dp2px(16)) as LinearLayout
+        val card = createCardContainer().apply {
+            setPadding(dp2px(16), dp2px(16), dp2px(16), dp2px(16))
+        }
 
         card.addView(createSectionHeader("出发准备清单"))
 
@@ -397,9 +398,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildRunningStatusCard(): View {
-        val card = createCardContainer()
-            .setPadding(dp2px(20), dp2px(20), dp2px(20), dp2px(20)) as LinearLayout
-        (card.layoutParams as LinearLayout.LayoutParams).topMargin = dp2px(14)
+        val card = createCardContainer().apply {
+            setPadding(dp2px(20), dp2px(20), dp2px(20), dp2px(20))
+            (layoutParams as LinearLayout.LayoutParams).topMargin = dp2px(14)
+        }
 
         val topRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -493,9 +495,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildDataDashboardCard(): View {
-        val card = createCardContainer()
-            .setPadding(dp2px(16), dp2px(18), dp2px(16), dp2px(18)) as LinearLayout
-        (card.layoutParams as LinearLayout.LayoutParams).topMargin = dp2px(14)
+        val card = createCardContainer().apply {
+            setPadding(dp2px(16), dp2px(18), dp2px(16), dp2px(18))
+            (layoutParams as LinearLayout.LayoutParams).topMargin = dp2px(14)
+        }
 
         card.addView(TextView(this).apply {
             text ="求职战报小结"
@@ -630,8 +633,9 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp2px(18), dp2px(6), dp2px(18), dp2px(24))
         }
 
-        val card = createCardContainer()
-            .setPadding(dp2px(16), dp2px(6), dp2px(16), dp2px(6)) as LinearLayout
+        val card = createCardContainer().apply {
+            setPadding(dp2px(16), dp2px(6), dp2px(16), dp2px(6))
+        }
 
         card.addView(createSettingRow(
             title ="DeepSeek API Key",
@@ -1147,17 +1151,17 @@ class MainActivity : AppCompatActivity() {
                 JobEntity.STATUS_EVALUATED -> {
                     holder.statusChip.text ="契合度高"
                     holder.statusChip.setTextColor(Color.parseColor("#2E7BE6"))
-                    holder.statusChip.background = pillDrawable("#EDF4FE")
+                    holder.statusChip.background = pillDrawable(Color.parseColor("#EDF4FE"))
                 }
                 JobEntity.STATUS_REJECTED -> {
                     holder.statusChip.text ="已跳过"
                     holder.statusChip.setTextColor(Color.parseColor("#6B7280"))
-                    holder.statusChip.background = pillDrawable("#EEF1F5")
+                    holder.statusChip.background = pillDrawable(Color.parseColor("#EEF1F5"))
                 }
                 JobEntity.STATUS_FILTERED_OUT -> {
                     holder.statusChip.text ="规则过滤"
                     holder.statusChip.setTextColor(Color.parseColor("#6B7280"))
-                    holder.statusChip.background = pillDrawable("#EEF1F5")
+                    holder.statusChip.background = pillDrawable(Color.parseColor("#EEF1F5"))
                 }
                 else -> {
                     holder.statusChip.text = item.status
@@ -1203,10 +1207,10 @@ class MainActivity : AppCompatActivity() {
 
         override fun getItemCount(): Int = dataList.size
 
-        private fun pillDrawable(bgHex: String): GradientDrawable {
+        private fun pillDrawable(bgColor: Int): GradientDrawable {
             return GradientDrawable().apply {
                 cornerRadius = dp2px(100).toFloat()
-                setColor(Color.parseColor(bgHex))
+                setColor(bgColor)
             }
         }
     }
