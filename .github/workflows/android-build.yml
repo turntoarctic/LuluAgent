@@ -28,20 +28,48 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # 从 Secret 解出正式签名证书 (缺失时 assembleRelease 自动降级为 unsigned，不阻断)
-      - name: Decode Release Keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > lulu-release.keystore
+      # 从 Secret 解出正式签名证书，并当场校验有效性。
+      # 【硬门禁】Secret 缺失或密码不匹配时直接判定失败，绝不静默产出 unsigned 包
+      - name: Decode & Validate Release Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::签名 Secret 未配置（KEYSTORE_BASE64 / KEYSTORE_PASSWORD），拒绝产出未签名包"
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > lulu-release.keystore
+          if ! keytool -list -keystore lulu-release.keystore -storepass "$KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            echo "::error::Keystore 解码失败或密码不匹配，请检查 KEYSTORE_BASE64 与 KEYSTORE_PASSWORD"
+            exit 1
+          fi
+          echo "✅ Keystore 校验通过，可用于正式签名"
 
       - name: Build Debug & Release APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: lulu
+          # Secret 未单独配置 KEY_ALIAS 时回退到默认别名 lulu
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'lulu' }}
         run: gradle assembleDebug assembleRelease --no-daemon --stacktrace
+
+      # 【核心门禁】Release 包必须是正式签名：unsigned 文件名直接判败 + apksigner 校验证书指纹
+      - name: Verify Release Signature
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          echo "校验对象: $APK"
+          if [[ "$APK" == *unsigned* ]]; then
+            echo "::error::Release APK 为未签名包，签名配置未生效！"
+            exit 1
+          fi
+          BT=$(ls -d "${ANDROID_HOME}/build-tools/"*/ | sort | tail -n 1)
+          "$BT/apksigner" verify --print-certs "$APK"
+          echo "✅ 正式签名校验通过"
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: LuluAgent-apks
+          name: Jobmate-apks
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
