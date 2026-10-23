@@ -65,6 +65,12 @@ class TaskDispatcher(
         // 目标公开导出的 WelcomeActivity
         private const val BOSS_WELCOME_ACTIVITY = "com.hpbr.bosszhipin.module.launcher.WelcomeActivity"
 
+        // 用户通过 HUD 控制面板手动拉停时的 riskType 标记 (非风控熔断，无需驻留 EMERGENCY_STOP)
+        private const val RISK_TYPE_MANUAL = "MANUAL"
+
+        // 前置去重键的数据库预载窗口：仅回看近 7 天已终结岗位
+        private const val PROCESSED_SEED_WINDOW_MS = 7 * 24 * 60 * 60 * 1000L
+
         // 真实 UI 锚点 ID
         private const val ID_TAB_JOB = "com.hpbr.bosszhipin:id/cl_tab_1"
         private const val ID_TAB_LABEL = "com.hpbr.bosszhipin:id/tv_tab_label"
@@ -110,6 +116,12 @@ class TaskDispatcher(
     }
 
     fun start(warmUpDelayMs: Long = 4000L) {
+        if (stateMachine.getCurrentState() == EngineState.EMERGENCY_STOP) {
+            Log.w(tag, "引擎处于风控熔断状态，需人工确认恢复后才能启动")
+            broadcastStepLog("🚨 风控熔断尚未解除，请在控制台确认恢复后再启动")
+            return
+        }
+
         if (stateMachine.getCurrentState().isOperating()) {
             Log.w(tag, "调度器已经在运行中")
             return
@@ -127,6 +139,9 @@ class TaskDispatcher(
         configRepository.setPaused(false)
 
         orchestratorJob = dispatcherScope.launch {
+            // 跨会话持久化去重：预载数据库近期已终结岗位，重启后不再重复访问老岗位
+            seedProcessedJobKeys()
+
             // 启动时显式拉起 WelcomeActivity 并复位到 Boss 直聘首页推荐列表
             resetToRecommendFeed()
 
@@ -144,6 +159,14 @@ class TaskDispatcher(
 
     fun stop() {
         Log.w(tag, "🛑 停止 TaskDispatcher 工作流")
+        haltWorkflow()
+        safeTransitionTo(EngineState.IDLE, "终止任务")
+    }
+
+    /**
+     * 停掉编排协程与子 Agent，但不改变 FSM 状态 (供 stop 与 emergencyStop 复用)
+     */
+    private fun haltWorkflow() {
         orchestratorJob?.cancel()
         orchestratorJob = null
 
@@ -152,8 +175,51 @@ class TaskDispatcher(
         evaluatorAgent.stop()
         communicatorAgent.stop()
 
-        safeTransitionTo(EngineState.IDLE, "终止任务")
         processedJobKeys.clear()
+        dispatcherScope.cancel()
+    }
+
+    /**
+     * 紧急停止：区分「用户手动拉停」与「风控自动熔断」。
+     * - 手动拉停：等同普通终止，直接归位 IDLE；
+     * - 风控熔断：驻留 EMERGENCY_STOP 红灯，由用户在控制台人工确认后恢复，
+     *   避免 UI 上熔断状态一闪而过、以及风控刚触发就能无冷却继续投递。
+     */
+    fun emergencyStop(riskType: String, reason: String) {
+        if (riskType == RISK_TYPE_MANUAL) {
+            stop()
+            return
+        }
+
+        safeTransitionTo(EngineState.EMERGENCY_STOP, "安全风控熔断: $reason")
+        haltWorkflow()
+        broadcastStepLog("🚨 已触发风控熔断 ($riskType)：$reason。请先到 Boss 直聘确认账号状态，再在控制台解除熔断。")
+    }
+
+    /**
+     * 人工确认解除风控熔断 (FSM 规则：EMERGENCY_STOP 只能回归 IDLE)
+     */
+    fun recoverFromEmergencyStop() {
+        if (stateMachine.getCurrentState() != EngineState.EMERGENCY_STOP) return
+        stateMachine.transitionTo(EngineState.IDLE, "人工确认解除熔断")
+        broadcastStepLog("🫶 风控熔断已人工确认解除，随时可以重新出发")
+    }
+
+    /**
+     * 跨会话持久化去重：启动时从数据库预载近期已终结岗位的「公司_职位」键，
+     * 让前置秒级去重在重启后依然生效，避免重复点击与重复评估
+     */
+    private suspend fun seedProcessedJobKeys() {
+        runCatching {
+            val since = System.currentTimeMillis() - PROCESSED_SEED_WINDOW_MS
+            val settledJobs = jobRepository.getRecentlySettledJobs(since)
+            settledJobs.forEach { job ->
+                processedJobKeys.add(buildJobKey(job.companyName, job.title))
+            }
+            Log.i(tag, "已从数据库预载 ${settledJobs.size} 条历史岗位用于前置去重")
+        }.onFailure {
+            Log.w(tag, "预载历史岗位去重键失败: ${it.message}")
+        }
     }
 
     fun pause() {
@@ -168,11 +234,6 @@ class TaskDispatcher(
             configRepository.setPaused(false)
             broadcastStepLog("▶️ 流水线已恢复")
         }
-    }
-
-    fun emergencyStop(riskType: String, reason: String) {
-        safeTransitionTo(EngineState.EMERGENCY_STOP, "安全风控熔断: $reason")
-        stop()
     }
 
     private suspend fun runOrchestrationLoop() {
@@ -255,7 +316,7 @@ class TaskDispatcher(
 
                 val job = scrapeDeferred.await()
                 if (job == null) {
-                    broadcastStepLog("⚠️ 提取岗位详情失败，安全回退")
+                    broadcastStepLog("⚠️ 岗位详情提取失败，安全回退")
                     ensureInRecommendList()
                     continue
                 }
@@ -417,7 +478,7 @@ class TaskDispatcher(
 
     private fun broadcastStepLog(message: String) {
         val intent = Intent(DispatcherBroadcasts.ACTION_TASK_STEP_MESSAGE).apply {
-            putExtra(DispatcherBroadcasts.EXTRA_TASK_NAME, "TaskDispatcher")
+            putExtra(DispatcherBroadcasts.EXTRA_TASK_NAME, "调度中枢")
             putExtra(DispatcherBroadcasts.EXTRA_STEP_INFO, message)
             setPackage(context.packageName)
         }

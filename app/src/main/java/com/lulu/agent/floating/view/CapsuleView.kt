@@ -34,7 +34,7 @@ class CapsuleView(context: Context) : FrameLayout(context) {
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 100f
-            setColor(Color.parseColor("#D918181C"))
+            setColor(Color.parseColor("#E11D481C"))
             setStroke(2, Color.parseColor("#4DFFFFFF"))
         }
 
@@ -60,7 +60,7 @@ class CapsuleView(context: Context) : FrameLayout(context) {
         }
 
         titleTv = TextView(context).apply {
-            text = "BossAgent"
+            text = "求职搭子"
             textSize = 12f
             setTextColor(Color.WHITE)
             isSingleLine = true

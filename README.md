@@ -1,7 +1,7 @@
 <div align="center">
 
-# 🦌 鹿鹿 (Lulu) · 端侧智能求职 Agent
-### 首款专为现代求职者打造的 Android 原生 Multi-Agent 治愈系求职搭子
+# 🦌 求职搭子 · 端侧智能求职 Agent
+### 首款专为现代求职者打造的 Android 原生 Multi-Agent 智能求职搭子
 
 <p align="center">
   <img src="https://img.shields.io/badge/Language-Kotlin_100%25-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" />
@@ -17,7 +17,7 @@
 
 <p align="center">
   <a href="#-界面一览">界面一览</a> •
-  <a href="#-为什么选择鹿鹿">为什么不同</a> •
+  <a href="#-为什么选择-求职搭子">为什么不同</a> •
   <a href="#-系统架构设计">架构设计</a> •
   <a href="#-极速安装使用">极速上手</a> •
   <a href="#-后续规划路线-roadmap">后续规划</a> •
@@ -31,7 +31,7 @@
 ## 🎬 实机演示
 
 <p align="center">
-  <img src="docs/github_demo.gif" width="340" alt="鹿鹿实机运行演示" />
+  <img src="docs/github_demo.gif" width="340" alt="求职搭子实机运行演示" />
 </p>
 
 <p align="center">
@@ -43,34 +43,34 @@
 ## 📱 界面一览
 
 <p align="center">
-  <img src="docs/lulu_home.png" width="340" alt="鹿鹿主页控制台" />
+  <img src="docs/lulu_home.png" width="340" alt="求职搭子主页控制台" />
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/lulu_records.png" width="340" alt="小鹿探路手账" />
+  <img src="docs/lulu_records.png" width="340" alt="投递手账" />
 </p>
 
 <p align="center">
-  <sub>左：极简纯净的求职主控台 &nbsp;|&nbsp; 右：温润如初的小鹿探路手账</sub>
+  <sub>左：极简纯净的求职主控台 &nbsp;|&nbsp; 右：条理清晰的投递手账</sub>
 </p>
 
 ---
 
-## 💡 为什么选择 鹿鹿 (Lulu)？
+## 💡 为什么选择 求职搭子？
 
 市面上 99% 的自动求职工具都是粗糙的浏览器脚本（Chrome 插件/Playwright），面临着 **Web 端风控频繁封号、Cookie 动辄失效、配置繁琐、无法感知移动端 HR 真实状态** 的硬伤。
 
-**鹿鹿 (Lulu)** 彻底改变了这一切：
+**求职搭子** 彻底改变了这一切：
 - 📱 **真机 Android 原生驱动**：运行在真实手机端，三阶贝塞尔拟人轨迹手势 + 高斯微小抖动，极大降低风控封号风险。
 - 🧠 **端侧多智能体协同（Multi-Agent）**：Scout（侦察）、Evaluator（评估）、Supervisor（风控）、Communicator（破冰）各司其职。
 - 📊 **多维透明评分体系**：DeepSeek 四维打分（技术栈 / 经验年限 / 薪资 / 稳定性）+ 本地偏好加权合成综合分，录取阈值与四档权重配比随心调节，评分可解释、拒绝黑箱盲投。
 - 🌸 **专为求职者打造的情绪缓冲**：不只是冰冷的投递工具，更是为你挡在前面、安抚内耗、给出暖心研判评语的治愈搭子。
-- 💰 **极致的 Token 成本控制**：内置本地规则过滤器（0-Token 消耗，外包黑名单 + 自定义排除关键词）+ 岗位全量指纹 MD5 去重缓存，拒绝盲目消耗 API。
+- 💰 **极致的 Token 成本控制**：内置本地规则过滤器（0-Token 消耗，外包黑名单 + 自定义排除关键词）+ 岗位全量指纹 MD5 去重缓存，跨会话持久化去重（重启后不再重复评估老岗位），拒绝盲目消耗 API。
 - 🛡️ **100% 隐私与纯端侧安全**：无中心化数据服务器，简历与 API Key 均存储在手机本地加密容器（EncryptedDataStore）。
 
 ---
 
 ## 🏗️ 系统架构设计 (Clean Architecture & Multi-Agent)
 
-鹿鹿采用高内聚、低耦合的模块化分层架构，各智能体协同运作，由调度中枢与有限状态机（FSM）严格控制生命周期与自愈流程：
+求职搭子采用高内聚、低耦合的模块化分层架构，各智能体协同运作，由调度中枢与有限状态机（FSM）严格控制生命周期与自愈流程：
 
 ```text
 app/src/main/java/com/lulu/agent/
@@ -97,19 +97,19 @@ app/src/main/java/com/lulu/agent/
 
 ## 🚀 极速上手 (Ready to Use)
 
-鹿鹿**无需任何电脑端配置环境**，开箱即用：
+求职搭子**无需任何电脑端配置环境**，开箱即用：
 
-1. **下载安装**：前往 [Releases 页面](../../releases) 下载最新的 `LuluAgent-v1.0.0.apk` 安装到 Android 手机（Android 8.0+）。
+1. **下载安装**：前往 [Releases 页面](../../releases) 下载最新的 `LuluAgent-v1.2.0.apk` 安装到 Android 手机（Android 8.0+）。
 2. **开启权限**：首次打开应用，根据首页指引开启 **无障碍权限（敲门开路）** 与 **悬浮窗权限（悄悄支招）**。
-3. **配置凭证**：点击右上角齿轮「百宝袋」，填入你的 **DeepSeek API Key**（支持一键连通性测试），并粘贴你的 Markdown 格式简历。
+3. **配置凭证**：进入「我的设置」页，填入你的 **DeepSeek API Key**（支持一键连通性测试），并粘贴你的 Markdown 格式简历。
 4. **调校策略（可选）**：在「筛选与评分策略」页设置综合评分录取阈值、评分偏好（均衡 / 技术优先 / 薪资优先 / 稳字当先）、期望薪资下限与自定义排除关键词。
-5. **开启探路**：点击主页 **【启动鹿鹿 · 开始探路】**，鹿鹿将自动拉起 Boss 直聘，在后台贴心为你筛选、评估与破冰沟通！
+5. **开启探路**：点击主页 **【出发，帮我盯岗位】**，搭子将自动拉起 Boss 直聘，在后台贴心为你筛选、评估与破冰沟通！
 
 ---
 
 ## 🗺️ 后续规划路线 (Roadmap)
 
-鹿鹿正在积极持续迭代中，后续版本计划引入：
+求职搭子正在积极持续迭代中，后续版本计划引入：
 
 - [ ] **实时消息回复与持续代聊**：基于 Room 存储与 HR 的历史对话记录，借助大模型实现多轮拟人回复。
 - [ ] **E人 / I人 模式分流**：
@@ -131,7 +131,7 @@ app/src/main/java/com/lulu/agent/
 
 ## 🤝 贡献与致谢
 
-欢迎提交 Issue 与 Pull Request，共同完善鹿鹿的自动化能力与治愈体验！
+欢迎提交 Issue 与 Pull Request，共同完善求职搭子的自动化能力与治愈体验！
 
 - **LLM Engine**: [DeepSeek](https://www.deepseek.com/)
 - **UI Architecture**: Jetpack & Material Components

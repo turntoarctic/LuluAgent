@@ -59,7 +59,13 @@
         <activity
             android:name=".ui.dashboard.HistoryRecordActivity"
             android:exported="false"
-            android:label="岗位投递流水" />
+            android:label="投递手账" />
+
+        <!-- 我的设置中心页 -->
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:label="我的设置" />
 
         <!-- 无障碍服务核心通道 -->
         <service

@@ -21,6 +21,9 @@ class ScrollFeedTask(
     private val onFailed: ((String) -> Unit)? = null  // 🌟【新增失败回调】
 ) : BaseAutomationTask() {
 
+    // 用户可见的任务名 (HUD 日志与失败提示展示用)
+    override fun getTaskName(): String = "滑动浏览"
+
     private val tag = "ScrollFeedTask"
 
     companion object {

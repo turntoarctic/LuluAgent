@@ -48,7 +48,7 @@ abstract class BaseAutomationTask {
         if (isTaskRunning) {
             val realTimeoutSec = getAdjustedDelay(baseTaskDurationMs) / 1000
             Log.e(getTaskName(), "========== 任务执行超时 (${realTimeoutSec}秒) ==========")
-            sendTaskMessage("任务超时强制失败_fc")
+            sendTaskMessage("任务执行超时")
             failedTask("任务执行超时")
         }
     }
@@ -156,7 +156,7 @@ abstract class BaseAutomationTask {
 
         retryCount++
         val realDelay = getAdjustedDelay(delayMillis)
-        sendTaskMessage("$retryLog，${realDelay}ms 后第 $retryCount 次重试_fc")
+        sendTaskMessage("$retryLog，${realDelay}ms 后第 $retryCount 次重试")
         mainHandler.postDelayed({ processStep() }, realDelay)
     }
 
@@ -167,7 +167,7 @@ abstract class BaseAutomationTask {
         if (!isTaskRunning) return
         stopTimeoutMonitor()
         isTaskRunning = false
-        sendTaskMessage("✅ 任务顺利完成_fc")
+        sendTaskMessage("✅ 任务顺利完成")
         callback?.onTaskFinished(getTaskName())
     }
 
@@ -178,7 +178,7 @@ abstract class BaseAutomationTask {
         tryDumpHierarchyOnFailure()
         stopTimeoutMonitor()
         isTaskRunning = false
-        sendTaskMessage("❌ 任务失败: $reason _fc")
+        sendTaskMessage("❌ 任务失败: $reason")
         callback?.onTaskFailed(getTaskName(), reason)
     }
 

@@ -10,11 +10,13 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.lulu.agent.data.local.AppDatabase
 import com.lulu.agent.data.local.entity.JobEntity
 import com.lulu.agent.data.pref.AppSettings
@@ -26,7 +28,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 鹿鹿 (Lulu) - 岗位投递与评估手账 (温润手账治愈风)
+ * 求职搭子 - 投递与评估手账 (温润手账治愈风)
  */
 class HistoryRecordActivity : AppCompatActivity() {
 
@@ -35,11 +37,11 @@ class HistoryRecordActivity : AppCompatActivity() {
     private val records = mutableListOf<JobEntity>()
     private val adapter = HistoryAdapter(records)
 
-    // 🌟 鹿鹿治愈系规范色盘
+    // 温润治愈系规范色盘
     private val colorBg = Color.parseColor("#F8F9FB")
     private val colorCard = Color.WHITE
     private val colorCardStroke = Color.parseColor("#F0F2F5")
-    private val colorPrimary = Color.parseColor("#FA6542")      // 暖杏橙
+    private val colorPrimary = Color.parseColor("#274DEA")      // 湛蓝
     private val colorTextMain = Color.parseColor("#1F2329")     // 高阶石板黑
     private val colorTextSub = Color.parseColor("#8F959E")      // 优雅次级灰
     private val colorThoughtBg = Color.parseColor("#F4F6F9")    // 评语气泡底色
@@ -92,7 +94,7 @@ class HistoryRecordActivity : AppCompatActivity() {
         }
 
         emptyTv = TextView(this).apply {
-            text = "🦌 还没有探路脚印呢\n启动小鹿后，每一次敲门和评价都会温存在这里~"
+            text = "🐾 还没有投递记录呢\n启动求职搭子后，每一次沟通与评估都会记录在这里~"
             textSize = 13f
             gravity = Gravity.CENTER
             setTextColor(colorTextSub)
@@ -142,7 +144,7 @@ class HistoryRecordActivity : AppCompatActivity() {
             }
 
             val title = TextView(this@HistoryRecordActivity).apply {
-                text = "小鹿的探路手账 🐾"
+                text = "投递手账 🐾"
                 textSize = 18f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(colorTextMain)
@@ -235,7 +237,7 @@ class HistoryRecordActivity : AppCompatActivity() {
                 tag = "salary"
                 textSize = 15f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(colorPrimary) // 鹿鹿专属暖杏橙
+                setTextColor(colorPrimary) // 湛蓝主色
                 includeFontPadding = false
             }
             row1.addView(title)
@@ -271,7 +273,7 @@ class HistoryRecordActivity : AppCompatActivity() {
             row2.addView(status)
             card.addView(row2)
 
-            // 第三行：鹿鹿参谋气泡 (小手账核心)
+            // 第三行：搭子参谋气泡 (手账核心)
             val bubble = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.VERTICAL
                 background = GradientDrawable().apply {
@@ -360,8 +362,8 @@ class HistoryRecordActivity : AppCompatActivity() {
                 }
                 JobEntity.STATUS_COMMUNICATED -> {
                     holder.statusChip.text = "已打招呼 💬"
-                    holder.statusChip.setTextColor(Color.parseColor("#FA6542"))
-                    holder.statusChip.background = getPillDrawable("#FFF4F0")
+                    holder.statusChip.setTextColor(Color.parseColor("#274DEA"))
+                    holder.statusChip.background = getPillDrawable("#E9EDFC")
                 }
                 JobEntity.STATUS_EVALUATED -> {
                     holder.statusChip.text = "契合度高 🎯"
@@ -371,13 +373,13 @@ class HistoryRecordActivity : AppCompatActivity() {
                 // 明显标识：柔和温红底 + 醒目警戒红字，彻底告别浅灰色
                 JobEntity.STATUS_REJECTED -> {
                     holder.statusChip.text = "已跳过"
-                    holder.statusChip.setTextColor(Color.parseColor("#E05244"))
-                    holder.statusChip.background = getPillDrawable("#FEECE8")
+                    holder.statusChip.setTextColor(Color.parseColor("#6B7280"))
+                    holder.statusChip.background = getPillDrawable("#EEF1F5")
                 }
                 JobEntity.STATUS_FILTERED_OUT -> {
                     holder.statusChip.text = "规则过滤"
-                    holder.statusChip.setTextColor(Color.parseColor("#E05244"))
-                    holder.statusChip.background = getPillDrawable("#FEECE8")
+                    holder.statusChip.setTextColor(Color.parseColor("#6B7280"))
+                    holder.statusChip.background = getPillDrawable("#EEF1F5")
                 }
                 else -> {
                     holder.statusChip.text = item.status
@@ -386,9 +388,9 @@ class HistoryRecordActivity : AppCompatActivity() {
                 }
             }
 
-            // 评语增加鹿鹿前缀
+            // 评语前缀
             val cleanReason = item.evalReason.ifBlank { "正在分析岗位的契合度与潜在风险..." }
-            holder.reasonTv.text = "🦌 鹿鹿评语：$cleanReason"
+            holder.reasonTv.text = "🦌 搭子评语：$cleanReason"
 
             // 契合度得分胶囊 (达标色随用户配置的录取阈值联动)
             val threshold = AppSettings.getInstance(holder.itemView.context).getMatchScoreThreshold()
@@ -420,6 +422,9 @@ class HistoryRecordActivity : AppCompatActivity() {
 
             val sdf = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
             holder.timeTv.text = sdf.format(Date(item.updatedAt))
+
+            // 点击卡片查看岗位完整详情
+            holder.itemView.setOnClickListener { showJobDetailDialog(item) }
         }
 
         override fun getItemCount(): Int = dataList.size
@@ -430,6 +435,127 @@ class HistoryRecordActivity : AppCompatActivity() {
                 setColor(Color.parseColor(bgHex))
             }
         }
+    }
+
+    // ==================== 岗位详情弹窗 ====================
+
+    /**
+     * 点击记录卡片时展示完整详情：评分四维、搭子评语全文、JD 原文与 HR 活跃状态
+     */
+    private fun showJobDetailDialog(item: JobEntity) {
+        val context = this
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            val p = dp2px(20)
+            setPadding(p, dp2px(12), p, dp2px(8))
+        }
+
+        fun addLabel(text: String): TextView = TextView(context).apply {
+            this.text = text
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorTextSub)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(14) }
+        }
+
+        fun addBody(text: String, isPrimary: Boolean = false): TextView = TextView(context).apply {
+            this.text = text
+            textSize = if (isPrimary) 14f else 13f
+            if (isPrimary) typeface = Typeface.DEFAULT_BOLD
+            setTextColor(if (isPrimary) colorPrimary else Color.parseColor("#4E5969"))
+            setLineSpacing(dp2px(3).toFloat(), 1.0f)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(4) }
+        }
+
+        // 头部：岗位名 + 薪资
+        content.addView(TextView(context).apply {
+            text = item.title
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorTextMain)
+            includeFontPadding = false
+        })
+        content.addView(TextView(context).apply {
+            text = item.salaryText
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(colorPrimary)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(4) }
+        })
+
+        // 公司 · 城市 + 状态与时间
+        val compName = item.companyName.trim()
+        val cityName = item.city.trim().ifBlank { "全国" }
+        content.addView(addBody("$compName · $cityName"))
+
+        val sdf = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
+        content.addView(addBody("更新于 ${sdf.format(Date(item.updatedAt))} · ${describeStatus(item.status)}"))
+
+        // 契合度评分
+        if (item.matchScore >= 0) {
+            content.addView(addLabel("契合度评分"))
+            val threshold = AppSettings.getInstance(context).getMatchScoreThreshold()
+            val passText = if (item.matchScore >= threshold) "达标 ✅" else "未达标"
+            content.addView(addBody("综合 ${item.matchScore} 分（录取阈值 $threshold 分，$passText）", isPrimary = true))
+
+            if (item.techScore >= 0 && item.experienceScore >= 0 &&
+                item.salaryScore >= 0 && item.stabilityScore >= 0
+            ) {
+                content.addView(addBody(
+                    "技术栈 ${item.techScore} · 经验年限 ${item.experienceScore} · 薪资 ${item.salaryScore} · 稳定性 ${item.stabilityScore}"
+                ))
+            }
+        }
+
+        // 搭子评语
+        content.addView(addLabel("搭子评语"))
+        content.addView(addBody(item.evalReason.ifBlank { "暂无评语" }))
+
+        // HR 信息
+        if (item.hrName.isNotBlank() || item.hrActiveStatus.isNotBlank()) {
+            content.addView(addLabel("HR 信息"))
+            val hrLine = buildString {
+                if (item.hrName.isNotBlank()) append(item.hrName)
+                if (item.hrTitle.isNotBlank()) append(" · ${item.hrTitle}")
+                if (item.hrActiveStatus.isNotBlank()) append("（${item.hrActiveStatus}）")
+            }
+            content.addView(addBody(hrLine))
+        }
+
+        // JD 全文
+        content.addView(addLabel("岗位 JD 全文"))
+        content.addView(addBody(item.jobDescription.ifBlank { "未抓取到详情内容" }))
+
+        val scrollView = ScrollView(context).apply {
+            addView(content)
+        }
+
+        MaterialAlertDialogBuilder(context)
+            .setTitle("岗位详情")
+            .setView(scrollView)
+            .setPositiveButton("关闭", null)
+            .show()
+    }
+
+    private fun describeStatus(status: String): String = when (status) {
+        JobEntity.STATUS_DELIVERED -> "已投递"
+        JobEntity.STATUS_COMMUNICATED -> "已打招呼"
+        JobEntity.STATUS_EVALUATED -> "契合度高"
+        JobEntity.STATUS_REJECTED -> "已跳过"
+        JobEntity.STATUS_FILTERED_OUT -> "规则过滤"
+        else -> status
     }
 
     private fun dp2px(dp: Int): Int {

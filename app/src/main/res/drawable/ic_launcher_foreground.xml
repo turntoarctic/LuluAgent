@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 求职搭子启动图标前景：极简白色小鹿头 (湛蓝底由 @color/ic_launcher_background 提供) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 左侧鹿角 (主枝 + 分叉) 与左耳，右侧通过镜像 group 复用 -->
+    <group>
+        <!-- 鹿角主枝 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M47.5,43 C44,38.5 41.2,32.5 40.2,26.5 C39.7,23.5 40.1,20.5 41.6,17.8 L44.2,19.3 C43.1,21.6 42.9,24.2 43.7,27.2 C44.8,31.6 47.2,35.6 50.4,38.6 Z" />
+        <!-- 鹿角分叉 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M41.2,26.8 C38.6,25.2 36.7,22.9 35.8,20 L38.5,19 C39.4,21.4 41,23.5 43.1,24.9 Z" />
+        <!-- 左耳 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M38.5,49 m-3.6,0 a3.6,3.6 0 1,1 7.2,0 a3.6,3.6 0 1,1 -7.2,0" />
+    </group>
+
+    <!-- 右侧镜像 (鹿角 + 耳) -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="-1">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M47.5,43 C44,38.5 41.2,32.5 40.2,26.5 C39.7,23.5 40.1,20.5 41.6,17.8 L44.2,19.3 C43.1,21.6 42.9,24.2 43.7,27.2 C44.8,31.6 47.2,35.6 50.4,38.6 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M41.2,26.8 C38.6,25.2 36.7,22.9 35.8,20 L38.5,19 C39.4,21.4 41,23.5 43.1,24.9 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M38.5,49 m-3.6,0 a3.6,3.6 0 1,1 7.2,0 a3.6,3.6 0 1,1 -7.2,0" />
+    </group>
+
+    <!-- 鹿头 (圆润椭圆) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38.5,60 a15.5,14.8 0 1,0 31,0 a15.5,14.8 0 1,0 -31,0 Z" />
+
+    <!-- 眼睛 (底色蓝点) -->
+    <path
+        android:fillColor="#274DEA"
+        android:pathData="M48.6,57.5 m-2.2,0 a2.2,2.2 0 1,1 4.4,0 a2.2,2.2 0 1,1 -4.4,0" />
+    <path
+        android:fillColor="#274DEA"
+        android:pathData="M59.4,57.5 m-2.2,0 a2.2,2.2 0 1,1 4.4,0 a2.2,2.2 0 1,1 -4.4,0" />
+
+    <!-- 鼻头 -->
+    <path
+        android:fillColor="#274DEA"
+        android:pathData="M54,67.5 m-2.8,0 a2.8,2.8 0 1,1 5.6,0 a2.8,2.8 0 1,1 -5.6,0" />
+</vector>

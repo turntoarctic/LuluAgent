@@ -2,6 +2,7 @@ package com.lulu.agent.llm.limiter
 
 import android.util.Log
 import com.lulu.agent.data.repository.JobRepository
+import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -18,6 +19,10 @@ class TokenUsageTracker(
     private val todayPromptTokens = AtomicInteger(0)
     private val todayCompletionTokens = AtomicInteger(0)
 
+    // 内存计数器所属日期：跨天时归零，防止长驻进程预算熔断后永不解除
+    private val counterLock = Any()
+    private var counterDay: LocalDate = LocalDate.now()
+
     companion object {
         // DeepSeek 定价参考 (元 / 100万 tokens)
         // 输入 Prompt (未命中缓存约 1.0 元/M，命中约 0.2 元/M，此处取保守均值 1.0 元)
@@ -30,9 +35,26 @@ class TokenUsageTracker(
      * 累加单次请求消耗
      */
     fun recordTokens(promptTokens: Int, completionTokens: Int) {
+        rollCountersIfNewDay()
         todayPromptTokens.addAndGet(promptTokens)
         todayCompletionTokens.addAndGet(completionTokens)
         Log.d(tag, "已记录 Token: Prompt+$promptTokens, Completion+$completionTokens | 今日预估总花费: ￥${"%.4f".format(getTodayEstimatedCostRmb())}")
+    }
+
+    /**
+     * 跨天检测：日期翻越时归零内存计数器，让每日预算重新计量
+     * (进程长驻场景下若无此步，一旦超限将永久熔断直至杀进程)
+     */
+    private fun rollCountersIfNewDay() {
+        synchronized(counterLock) {
+            val today = LocalDate.now()
+            if (today != counterDay) {
+                counterDay = today
+                todayPromptTokens.set(0)
+                todayCompletionTokens.set(0)
+                Log.i(tag, "跨天检测：Token 内存计数器已归零，今日预算重新计量")
+            }
+        }
     }
 
     /**
@@ -48,6 +70,9 @@ class TokenUsageTracker(
      * 检查是否超出每日消费上限（熔断判定）
      */
     suspend fun isBudgetExceeded(): Boolean {
+        // 跨天归零校验优先于一切熔断判定
+        rollCountersIfNewDay()
+
         // 同步数据库累计的历史消耗（针对冷启动或跨天场景）
         val dbTotalTokens = jobRepository.getTodayTokenCost()
         val currentCost = getTodayEstimatedCostRmb()

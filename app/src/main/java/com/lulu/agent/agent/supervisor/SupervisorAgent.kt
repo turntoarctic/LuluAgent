@@ -10,7 +10,7 @@ import com.lulu.agent.dispatcher.contract.DispatcherBroadcasts
 /**
  * 安全风控官：守护全系统运行安全，负责快速熔断
  */
-class SupervisorAgent(context: Context) : BaseAgent(context, "SupervisorAgent") {
+class SupervisorAgent(context: Context) : BaseAgent(context, "安全卫兵") {
 
     private var consecutiveFailureCount = 0
     private val maxAllowedFailures = 4 // 连续失败 4 次则自动熔断（防止卡在死循环页面）

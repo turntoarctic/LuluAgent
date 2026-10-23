@@ -15,6 +15,9 @@ class InspectDetailTask(
     private val onError: ((String) -> Unit)? = null // 🌟【新增错误回调】
 ) : BaseAutomationTask() {
 
+    // 用户可见的任务名 (HUD 日志与失败提示展示用)
+    override fun getTaskName(): String = "查看详情"
+
     private val tag = "InspectDetailTask"
 
     companion object {

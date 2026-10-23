@@ -4,7 +4,7 @@ package com.lulu.agent.floating.state
  * 悬浮窗响应式 UI 状态实体
  */
 data class HUDUiState(
-    val stateTitle: String = "空闲就绪",
+    val stateTitle: String = "待命中",
     val indicatorColorHex: String = "#9E9E9E",
     val currentTargetJob: String = "等待探寻岗位",
     val deepSeekThought: String = "DeepSeek 思考引擎就绪...",

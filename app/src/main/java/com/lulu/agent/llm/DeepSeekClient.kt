@@ -257,6 +257,15 @@ class DeepSeekClient(
                 // 遇到 HTTP 错误 (429 限流 / 5xx 服务端超载)
                 val errorCode = response.code()
                 val errorMsg = response.errorBody()?.string() ?: "HTTP $errorCode"
+
+                // 4xx 中仅 408 (请求超时) 与 429 (限流) 值得退避重试；
+                // 401/402/422 等属于 Key 无效、余额不足、参数非法，重试必然复现，立即失败避免空耗
+                if (errorCode in 400..499 && errorCode != 408 && errorCode != 429) {
+                    val fatal = IllegalStateException("请求失败 [$errorCode]: $errorMsg (客户端错误，不重试)")
+                    Log.e(tag, "非限流类客户端错误，终止重试: $errorMsg")
+                    return Result.failure(fatal)
+                }
+
                 lastException = IllegalStateException("请求失败 [$errorCode]: $errorMsg")
                 Log.w(tag, "请求未成功 (第 $currentAttempt 次): $errorMsg")
             } catch (e: Exception) {

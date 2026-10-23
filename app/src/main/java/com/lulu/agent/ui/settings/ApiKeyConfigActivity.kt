@@ -48,16 +48,16 @@ class ApiKeyConfigActivity : AppCompatActivity() {
     private val colorBg = Color.parseColor("#F8F9FB")
     private val colorCard = Color.WHITE
     private val colorCardStroke = Color.parseColor("#EAECEF")
-    private val colorPrimary = Color.parseColor("#FA6542")         // 鹿鹿暖杏橙
-    private val colorPrimaryDark = Color.parseColor("#DE4F2C")     // 高对比深橙
-    private val colorPrimarySoft = Color.parseColor("#FFF4F0")     // 极淡微桃粉
+    private val colorPrimary = Color.parseColor("#274DEA")         // 湛蓝主色
+    private val colorPrimaryDark = Color.parseColor("#1F3EBB")     // 高对比深蓝
+    private val colorPrimarySoft = Color.parseColor("#E9EDFC")     // 极淡雾蓝
     private val colorTextMain = Color.parseColor("#1F2329")        // 高阶石板黑
     private val colorTextSub = Color.parseColor("#646A73")         // 次级深灰
     private val colorTextTip = Color.parseColor("#8F959E")         // 浅灰说明
     private val colorSuccess = Color.parseColor("#2BA471")         // 成功绿
     private val colorSuccessSoft = Color.parseColor("#EBF6F1")
-    private val colorError = Color.parseColor("#E05244")           // 警戒红
-    private val colorErrorSoft = Color.parseColor("#FEECE8")
+    private val colorError = Color.parseColor("#E11D48")           // 警戒玫红
+    private val colorErrorSoft = Color.parseColor("#FCE7EF")
     private val colorInputBg = Color.parseColor("#F4F6F9")         // 输入框底色
 
     override fun onCreate(savedInstanceState: Bundle?) {

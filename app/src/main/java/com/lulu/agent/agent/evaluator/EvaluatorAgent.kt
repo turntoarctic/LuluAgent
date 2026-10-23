@@ -19,7 +19,7 @@ class EvaluatorAgent(
     private val deepSeekClient: DeepSeekClient,
     private val jobRepository: JobRepository,
     private val configRepository: ConfigRepository
-) : BaseAgent(context, "EvaluatorAgent") {
+) : BaseAgent(context, "评估参谋") {
 
     override fun start() {
         super.start()

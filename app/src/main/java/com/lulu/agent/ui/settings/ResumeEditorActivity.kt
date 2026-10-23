@@ -17,19 +17,19 @@ import com.lulu.agent.data.pref.EncryptedDataStore
 import com.lulu.agent.data.repository.ConfigRepository
 
 /**
- * 求职者核心简历与背景知识库编辑器 (Markdown 格式 · 鹿鹿治愈温润风)
+ * 求职者核心简历与背景知识库编辑器 (Markdown 格式 · 温润治愈风)
  */
 class ResumeEditorActivity : AppCompatActivity() {
 
     private lateinit var configRepository: ConfigRepository
     private lateinit var resumeEdit: EditText
 
-    // 🌟 鹿鹿统一治愈系色盘
+    // 温润治愈系统一色盘
     private val colorBg = Color.parseColor("#F8F9FB")
     private val colorCard = Color.WHITE
     private val colorCardStroke = Color.parseColor("#F0F2F5")
-    private val colorPrimary = Color.parseColor("#FA6542")       // 鹿鹿治愈暖杏橙
-    private val colorPrimarySoft = Color.parseColor("#FFF4F0")   // 极淡微桃粉
+    private val colorPrimary = Color.parseColor("#274DEA")       // 湛蓝主色
+    private val colorPrimarySoft = Color.parseColor("#E9EDFC")   // 极淡雾蓝
     private val colorTextMain = Color.parseColor("#1F2329")      // 高阶石板黑
     private val colorTextSub = Color.parseColor("#8F959E")       // 优雅次级灰
     private val colorInputBg = Color.parseColor("#F4F6F9")       // 输入框浅底色

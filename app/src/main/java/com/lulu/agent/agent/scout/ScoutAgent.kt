@@ -14,7 +14,7 @@ import com.lulu.agent.accessibility.util.AccessibilityNodeUtil
 import com.lulu.agent.agent.base.BaseAgent
 import java.util.concurrent.atomic.AtomicBoolean
 
-class ScoutAgent(context: Context) : BaseAgent(context, "ScoutAgent") {
+class ScoutAgent(context: Context) : BaseAgent(context, "侦察兵") {
 
     data class CardAnchor(
         val bounds: Rect,

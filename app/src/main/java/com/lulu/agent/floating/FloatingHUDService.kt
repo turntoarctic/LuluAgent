@@ -182,7 +182,7 @@ class FloatingHUDService : Service() {
     // ==================== 前台通知保活 (Android 14+ FGS 适配) ====================
 
     private fun startForegroundNotification() {
-        val channelName = "BossAgent 运行守护"
+        val channelName = "求职搭子 守护运行"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val chan = NotificationChannel(CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -190,7 +190,7 @@ class FloatingHUDService : Service() {
         }
 
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("BossAgent 正在后台守护运行")
+            .setContentTitle("求职搭子正在后台守护运行")
             .setContentText("双模智能悬浮控制台已就绪")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_LOW)

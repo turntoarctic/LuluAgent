@@ -41,7 +41,7 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dp2px(16).toFloat()
-            setColor(Color.parseColor("#F216161A"))
+            setColor(Color.parseColor("#E11D481A"))
             setStroke(2, Color.parseColor("#4D5C6BC0"))
         }
 
@@ -59,7 +59,7 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         }
 
         val appTitle = TextView(context).apply {
-            text = "BossAgent 深度驾驶舱"
+            text = "求职搭子 · 悬浮控制台"
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
@@ -67,7 +67,7 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         }
 
         val minimizeBtn = createIconButton("➖", "#3A3A40") { onMinimizeClicked?.invoke() }
-        val stopBtn = createIconButton("🛑", "#8C2626") { onEmergencyStopClicked?.invoke() }
+        val stopBtn = createIconButton("🛑", "#701A34") { onEmergencyStopClicked?.invoke() }
 
         header.addView(appTitle)
         header.addView(minimizeBtn)
@@ -98,7 +98,7 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         }
 
         targetTv = TextView(context).apply {
-            text = "标的: 等待开始"
+            text = "当前岗位: 等待开始"
             textSize = 11f
             setTextColor(Color.parseColor("#E0E0E0"))
             isSingleLine = true
@@ -154,7 +154,7 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
         }
 
         pauseResumeBtn = TextView(context).apply {
-            text = "⏸️ 挂起暂停"
+            text = "⏸️ 暂停"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
@@ -205,10 +205,10 @@ class ConsoleDashboardView(context: Context) : FrameLayout(context) {
             // 颜色兜底
         }
 
-        targetTv.text = "标的: ${state.currentTargetJob}"
+        targetTv.text = "当前岗位: ${state.currentTargetJob}"
         thoughtTv.text = state.deepSeekThought
 
-        pauseResumeBtn.text = if (state.isPaused) "▶️ 恢复执行" else "⏸️ 挂起暂停"
+        pauseResumeBtn.text = if (state.isPaused) "▶️ 恢复执行" else "⏸️ 暂停"
         pauseResumeBtn.background = GradientDrawable().apply {
             cornerRadius = dp2px(6).toFloat()
             setColor(if (state.isPaused) Color.parseColor("#43A047") else Color.parseColor("#3F51B5"))

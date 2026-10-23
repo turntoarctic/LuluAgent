@@ -42,6 +42,12 @@ class LocalPreFilter(
             return FilterResult.Reject("公司命中黑名单或该岗位已沟通过")
         }
 
+        // 1.5 跨会话持久化去重：进程重启后，历史已评估放弃的岗位不再重复抓取评估 (0-Token 拦截)
+        if (jobRepository.isJobDiscardedBefore(jobId)) {
+            Log.d(tag, "拦截：岗位 [$company - $title] 历史已评估放弃，跳过重复评估")
+            return FilterResult.Reject("该岗位此前已评估放弃，跳过重复评估")
+        }
+
         // 2. 外包公司与关键词过滤
         if (configRepository.isFilterOutsourcing()) {
             val matchedKeyword = findOutsourcingMatch("$company $title $jd")

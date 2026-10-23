@@ -27,6 +27,21 @@ class JobRepository(private val db: AppDatabase) {
         true
     }
 
+    /**
+     * 该岗位是否曾被评估放弃 (REJECTED / FILTERED_OUT)
+     * 用于跨会话持久化去重：进程重启后不再对老岗位重复消耗 DeepSeek Token
+     */
+    suspend fun isJobDiscardedBefore(jobId: String): Boolean = withContext(Dispatchers.IO) {
+        jobDao.isJobDiscardedBefore(jobId)
+    }
+
+    /**
+     * 拉取近期已终结岗位 (已沟通/已投递/已放弃)，供调度中枢启动时预载前置去重键
+     */
+    suspend fun getRecentlySettledJobs(since: Long): List<JobEntity> = withContext(Dispatchers.IO) {
+        jobDao.getRecentlySettledJobs(since)
+    }
+
     suspend fun recordDiscoveredJob(job: JobEntity): Boolean = withContext(Dispatchers.IO) {
         val rowId = jobDao.insertOrIgnore(job)
         rowId > 0

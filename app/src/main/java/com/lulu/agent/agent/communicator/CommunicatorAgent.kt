@@ -19,7 +19,7 @@ class CommunicatorAgent(
     private val deepSeekClient: DeepSeekClient,
     private val jobRepository: JobRepository,
     private val configRepository: ConfigRepository
-) : BaseAgent(context, "CommunicatorAgent") {
+) : BaseAgent(context, "破冰大使") {
 
     override fun start() {
         super.start()

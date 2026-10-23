@@ -19,6 +19,10 @@ class SendGreetingTask(
 ) : BaseAutomationTask() {
 
     private val tag = "SendGreetingTask"
+
+    // 用户可见的任务名 (HUD 日志与失败提示展示用)
+    override fun getTaskName(): String = "打招呼"
+
     private var sendClickAttempts = 0
 
     companion object {
