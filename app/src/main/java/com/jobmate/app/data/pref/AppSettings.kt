@@ -101,6 +101,11 @@ class AppSettings(context: Context) {
         private const val KEY_MATCH_SCORE_THRESHOLD = "match_score_threshold"
         private const val KEY_SCORE_PREFERENCE = "score_preference"
         private const val KEY_EXCLUDE_KEYWORDS = "exclude_keywords"
+        private const val KEY_GREETING_STYLE = "greeting_style"
+        private const val KEY_CUSTOM_W_TECH = "custom_w_tech"
+        private const val KEY_CUSTOM_W_EXP = "custom_w_exp"
+        private const val KEY_CUSTOM_W_SALARY = "custom_w_salary"
+        private const val KEY_CUSTOM_W_STABILITY = "custom_w_stability"
 
         const val DEFAULT_MATCH_SCORE_THRESHOLD = 70
 
