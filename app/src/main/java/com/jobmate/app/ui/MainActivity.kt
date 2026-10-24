@@ -105,9 +105,6 @@ class MainActivity : AppCompatActivity() {
     private val statusFilters = listOf("全部", "已投递", "已打招呼", "契合度高", "已跳过", "规则过滤")
 
     // 设置页新增视图
-    private lateinit var costAmountTv: TextView
-    private lateinit var costProgressFill: View
-    private lateinit var costHintTv: TextView
     private lateinit var styleDescTv: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -887,8 +884,6 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp2px(18), dp2px(6), dp2px(18), dp2px(24))
         }
 
-        page.addView(buildCostDashboardCard())
-
         val card = createCardContainer().apply {
             setPadding(dp2px(16), dp2px(6), dp2px(16), dp2px(6))
         }
@@ -979,116 +974,7 @@ class MainActivity : AppCompatActivity() {
         return Pair(row, descTvRef)
     }
 
-    // ==================== 设置页：成本仪表盘与破冰风格 ====================
-
-    /** 今日 AI 消耗卡片：金额 + 预算进度条 */
-    private fun buildCostDashboardCard(): View {
-        val card = createCardContainer().apply {
-            setPadding(dp2px(16), dp2px(16), dp2px(16), dp2px(16))
-        }
-
-        val headerRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        headerRow.addView(TextView(this).apply {
-            text = "今日 AI 消耗"
-            textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(colorTextSub)
-            includeFontPadding = false
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        headerRow.addView(TextView(this).apply {
-            text = "DeepSeek 深度研判消耗"
-            textSize = 10f
-            setTextColor(colorTextSub)
-            includeFontPadding = false
-        })
-        card.addView(headerRow)
-
-        costAmountTv = TextView(this).apply {
-            text = "¥0.00"
-            textSize = 26f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(colorTextMain)
-            includeFontPadding = false
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp2px(8) }
-        }
-        card.addView(costAmountTv)
-
-        // 自绘进度条：灰底轨道 + 主色填充
-        val trackHeight = dp2px(8)
-        val track = FrameLayout(this).apply {
-            background = GradientDrawable().apply {
-                cornerRadius = trackHeight.toFloat()
-                setColor(Color.parseColor("#EDF0F5"))
-            }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                trackHeight
-            ).apply { topMargin = dp2px(12) }
-        }
-        costProgressFill = View(this).apply {
-            background = GradientDrawable().apply {
-                cornerRadius = trackHeight.toFloat()
-                setColor(colorPrimary)
-            }
-            layoutParams = FrameLayout.LayoutParams(0, trackHeight)
-        }
-        track.addView(costProgressFill)
-        card.addView(track)
-
-        costHintTv = TextView(this).apply {
-            text = ""
-            textSize = 11f
-            setTextColor(colorTextSub)
-            includeFontPadding = false
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp2px(8) }
-        }
-        card.addView(costHintTv)
-
-        return card
-    }
-
-    private fun loadCostDashboard() {
-        lifecycleScope.launch {
-            val app = application as JobmateApp
-            val cost = withContext(Dispatchers.IO) { app.tokenUsageTracker.todayCostRmb() }
-            val budget = app.tokenUsageTracker.budgetRmb()
-
-            costAmountTv.text = String.format(Locale.getDefault(), "¥%.2f", cost)
-            val ratio = if (budget > 0) (cost / budget).coerceIn(0.0, 1.0) else 0.0
-
-            val trackWidth = costProgressFill.parent.let { (it as View).width }
-            val fillPx = if (trackWidth > 0) (trackWidth * ratio).toInt() else 0
-            costProgressFill.layoutParams = FrameLayout.LayoutParams(
-                fillPx, costProgressFill.layoutParams.height
-            )
-            costProgressFill.requestLayout()
-
-            // 占用色阶：正常主色 -> 接近预算蓝灰 -> 超限玫红
-            val fillColor = when {
-                ratio >= 1.0 -> Color.parseColor("#E11D48")
-                ratio >= 0.8 -> Color.parseColor("#64748B")
-                else -> colorPrimary
-            }
-            (costProgressFill.background as? GradientDrawable)?.setColor(fillColor)
-            costAmountTv.setTextColor(if (ratio >= 1.0) Color.parseColor("#E11D48") else colorTextMain)
-
-            costHintTv.text = when {
-                ratio >= 1.0 -> "已达每日预算 ¥${"%.2f".format(budget)}，评估已自动熔断，明日自动恢复"
-                ratio >= 0.8 -> "接近每日预算 ¥${"%.2f".format(budget)}，约剩 ¥${"%.2f".format((budget - cost).coerceAtLeast(0.0))}"
-                else -> "每日预算 ¥${"%.2f".format(budget)}，已使用 ${(ratio * 100).toInt()}%"
-            }
-        }
-    }
+    // ==================== 设置页：破冰语风格 ====================
 
     private fun currentGreetingStyleDesc(): String {
         val style = (application as JobmateApp).configRepository.getGreetingStyle()
@@ -1552,38 +1438,10 @@ class MainActivity : AppCompatActivity() {
             val cityName = item.city.trim().ifBlank { "全国" }
             holder.companyTv.text = if (compName.isNotEmpty()) "$compName · $cityName" else cityName
 
-            when (item.status) {
-                JobEntity.STATUS_DELIVERED -> {
-                    holder.statusChip.text ="已投递"
-                    holder.statusChip.setTextColor(colorSuccess)
-                    holder.statusChip.background = pillDrawable(colorSuccessSoft)
-                }
-                JobEntity.STATUS_COMMUNICATED -> {
-                    holder.statusChip.text ="已打招呼"
-                    holder.statusChip.setTextColor(colorPrimary)
-                    holder.statusChip.background = pillDrawable(colorPrimarySoft)
-                }
-                JobEntity.STATUS_EVALUATED -> {
-                    holder.statusChip.text ="契合度高"
-                    holder.statusChip.setTextColor(Color.parseColor("#2E7BE6"))
-                    holder.statusChip.background = pillDrawable(Color.parseColor("#EDF4FE"))
-                }
-                JobEntity.STATUS_REJECTED -> {
-                    holder.statusChip.text ="已跳过"
-                    holder.statusChip.setTextColor(Color.parseColor("#6B7280"))
-                    holder.statusChip.background = pillDrawable(Color.parseColor("#EEF1F5"))
-                }
-                JobEntity.STATUS_FILTERED_OUT -> {
-                    holder.statusChip.text ="规则过滤"
-                    holder.statusChip.setTextColor(Color.parseColor("#6B7280"))
-                    holder.statusChip.background = pillDrawable(Color.parseColor("#EEF1F5"))
-                }
-                else -> {
-                    holder.statusChip.text = item.status
-                    holder.statusChip.setTextColor(colorTextSub)
-                    holder.statusChip.background = pillDrawable(colorCardStroke)
-                }
-            }
+            val (statusLabel, statusTextCol, statusBg) = statusStyle(item.status)
+            holder.statusChip.text = statusLabel
+            holder.statusChip.setTextColor(statusTextCol)
+            holder.statusChip.background = pillDrawable(statusBg)
 
             val cleanReason = item.evalReason.ifBlank { "正在分析岗位的契合度与潜在风险..." }
             holder.reasonTv.text ="搭子评语：$cleanReason"
@@ -1631,14 +1489,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** 点击记录卡片时展示完整详情：评分四维、评语全文、JD 原文与 HR 活跃状态 */
+    /** 状态 → (标签, 字色, 底色)，手账列表与详情弹窗共用 */
+    private fun statusStyle(status: String): Triple<String, Int, Int> = when (status) {
+        JobEntity.STATUS_DELIVERED -> Triple("已投递", colorSuccess, colorSuccessSoft)
+        JobEntity.STATUS_COMMUNICATED -> Triple("已打招呼", colorPrimary, colorPrimarySoft)
+        JobEntity.STATUS_EVALUATED -> Triple("契合度高", Color.parseColor("#2E7BE6"), Color.parseColor("#EDF4FE"))
+        JobEntity.STATUS_REJECTED -> Triple("已跳过", Color.parseColor("#6B7280"), Color.parseColor("#EEF1F5"))
+        JobEntity.STATUS_FILTERED_OUT -> Triple("规则过滤", Color.parseColor("#6B7280"), Color.parseColor("#EEF1F5"))
+        else -> Triple(status, colorTextSub, colorCardStroke)
+    }
+
+    /** 点击记录卡片时展示完整详情：分数块、四维胶囊、评语与 JD 全文（支持复制） */
     private fun showJobDetailDialog(item: JobEntity) {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val p = dp2px(20)
-            setPadding(p, dp2px(12), p, dp2px(8))
+            setPadding(p, dp2px(8), p, dp2px(4))
         }
 
-        fun addLabel(text: String): TextView = TextView(this).apply {
+        fun sectionLabel(text: String): TextView = TextView(this).apply {
             this.text = text
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
@@ -1647,22 +1516,28 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp2px(14) }
+            ).apply { topMargin = dp2px(16) }
         }
 
-        fun addBody(text: String, isPrimary: Boolean = false): TextView = TextView(this).apply {
+        fun bubble(text: String): TextView = TextView(this).apply {
             this.text = text
-            textSize = if (isPrimary) 14f else 13f
-            if (isPrimary) typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (isPrimary) colorPrimary else colorTextBody)
+            textSize = 13f
+            setTextColor(colorTextBody)
             setLineSpacing(dp2px(3).toFloat(), 1.0f)
             includeFontPadding = false
+            background = GradientDrawable().apply {
+                cornerRadius = dp2px(10).toFloat()
+                setColor(Color.parseColor("#F4F6F9"))
+            }
+            val bp = dp2px(12)
+            setPadding(bp, bp, bp, bp)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp2px(4) }
+            ).apply { topMargin = dp2px(6) }
         }
 
+        // 头部：岗位名 + 薪资与状态胶囊同行
         content.addView(TextView(this).apply {
             text = item.title
             textSize = 18f
@@ -1671,11 +1546,44 @@ class MainActivity : AppCompatActivity() {
             includeFontPadding = false
         })
 
-        content.addView(TextView(this).apply {
-            text = item.salaryText
+        val salaryRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp2px(6) }
+        }
+        salaryRow.addView(TextView(this).apply {
+            text = item.salaryText.ifBlank { "薪资面议" }
             textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(colorPrimary)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        val (statusLabel, statusTextCol, statusBg) = statusStyle(item.status)
+        salaryRow.addView(TextView(this).apply {
+            text = statusLabel
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            includeFontPadding = false
+            setTextColor(statusTextCol)
+            background = GradientDrawable().apply {
+                cornerRadius = dp2px(100).toFloat()
+                setColor(statusBg)
+            }
+            setPadding(dp2px(10), dp2px(4), dp2px(10), dp2px(4))
+        })
+        content.addView(salaryRow)
+
+        content.addView(TextView(this).apply {
+            text = buildString {
+                append(item.companyName.trim().ifBlank { "未知公司" })
+                if (item.city.isNotBlank()) append(" · ${item.city.trim()}")
+            }
+            textSize = 13f
+            setTextColor(colorTextSub)
             includeFontPadding = false
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -1683,43 +1591,133 @@ class MainActivity : AppCompatActivity() {
             ).apply { topMargin = dp2px(4) }
         })
 
-        val compName = item.companyName.trim()
-        val cityName = item.city.trim().ifBlank { "全国" }
-        content.addView(addBody("$compName · $cityName"))
-
-        val sdf = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
-        content.addView(addBody("更新于 ${sdf.format(Date(item.updatedAt))} · ${describeStatus(item.status)}"))
-
+        // 契合度评分块：左侧大分数 + 右侧达标状态与四维胶囊
         if (item.matchScore >= 0) {
-            content.addView(addLabel("契合度评分"))
-            val threshold = AppSettings.getInstance(this).getMatchScoreThreshold()
-            val passText = if (item.matchScore >= threshold) "达标" else "未达标"
-            content.addView(addBody("综合 ${item.matchScore} 分（录取阈值 $threshold 分，$passText）", isPrimary = true))
+            content.addView(sectionLabel("契合度评分"))
 
+            val threshold = AppSettings.getInstance(this).getMatchScoreThreshold()
+            val passed = item.matchScore >= threshold
+            val scoreBlock = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(8) }
+            }
+
+            scoreBlock.addView(TextView(this).apply {
+                text = "${item.matchScore}"
+                textSize = 40f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(if (passed) colorSuccess else colorTextSub)
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = dp2px(16) }
+            })
+
+            val rightCol = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            rightCol.addView(TextView(this).apply {
+                text = if (passed) "达到录取阈值 $threshold 分" else "未达录取阈值 $threshold 分"
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(if (passed) colorSuccess else colorTextSub)
+                includeFontPadding = false
+            })
+
+            val dimsRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp2px(8) }
+            }
             if (item.techScore >= 0 && item.experienceScore >= 0 &&
                 item.salaryScore >= 0 && item.stabilityScore >= 0
             ) {
-                content.addView(addBody(
-                    "技术栈 ${item.techScore} · 经验年限 ${item.experienceScore} · 薪资 ${item.salaryScore} · 稳定性 ${item.stabilityScore}"
-                ))
+                listOf(
+                    "技" to item.techScore,
+                    "验" to item.experienceScore,
+                    "薪" to item.salaryScore,
+                    "稳" to item.stabilityScore
+                ).forEach { (name, value) ->
+                    dimsRow.addView(TextView(this).apply {
+                        text = "$name $value"
+                        textSize = 11f
+                        typeface = Typeface.DEFAULT_BOLD
+                        setTextColor(Color.parseColor("#2E7BE6"))
+                        gravity = Gravity.CENTER
+                        includeFontPadding = false
+                        background = GradientDrawable().apply {
+                            cornerRadius = dp2px(100).toFloat()
+                            setColor(Color.parseColor("#EDF4FE"))
+                        }
+                        setPadding(dp2px(9), dp2px(4), dp2px(9), dp2px(4))
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { marginEnd = dp2px(6) }
+                    })
+                }
+            } else {
+                dimsRow.addView(TextView(this).apply {
+                    text = "四维明细缺失"
+                    textSize = 11f
+                    setTextColor(colorTextSub)
+                    includeFontPadding = false
+                })
             }
+            rightCol.addView(dimsRow)
+            scoreBlock.addView(rightCol)
+            content.addView(scoreBlock)
         }
 
-        content.addView(addLabel("搭子评语"))
-        content.addView(addBody(item.evalReason.ifBlank { "暂无评语" }))
+        // 搭子评语
+        content.addView(sectionLabel("搭子评语"))
+        content.addView(bubble(item.evalReason.ifBlank { "暂无评语" }))
 
+        // HR 信息
         if (item.hrName.isNotBlank() || item.hrActiveStatus.isNotBlank()) {
-            content.addView(addLabel("HR 信息"))
+            content.addView(sectionLabel("HR 信息"))
             val hrLine = buildString {
                 if (item.hrName.isNotBlank()) append(item.hrName)
                 if (item.hrTitle.isNotBlank()) append(" · ${item.hrTitle}")
                 if (item.hrActiveStatus.isNotBlank()) append("（${item.hrActiveStatus}）")
             }
-            content.addView(addBody(hrLine))
+            content.addView(bubble(hrLine))
         }
 
-        content.addView(addLabel("岗位 JD 全文"))
-        content.addView(addBody(item.jobDescription.ifBlank { "未抓取到详情内容" }))
+        // 岗位 JD + 复制
+        content.addView(sectionLabel("岗位 JD"))
+        if (item.jobDescription.isNotBlank()) {
+            content.addView(bubble(item.jobDescription))
+            content.addView(TextView(this).apply {
+                text = "复制 JD 全文"
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(colorPrimary)
+                includeFontPadding = false
+                setPadding(0, dp2px(10), dp2px(10), 0)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                setOnClickListener {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(
+                        android.content.ClipData.newPlainText("JD", item.jobDescription)
+                    )
+                    Toast.makeText(this@MainActivity, "JD 已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                }
+            })
+        } else {
+            content.addView(bubble("未抓取到详情内容"))
+        }
 
         val scrollView = ScrollView(this).apply {
             addView(content)

@@ -66,19 +66,6 @@ class TokenUsageTracker(
         return promptCost + completionCost
     }
 
-    /** 每日预算上限 (元)，供成本仪表盘展示 */
-    fun budgetRmb(): Double = maxDailyCostRmb
-
-    /**
-     * 今日预估消耗 (元)：内存增量与数据库累计取大者，口径与熔断判定一致
-     */
-    suspend fun todayCostRmb(): Double {
-        rollCountersIfNewDay()
-        val dbTotalTokens = jobRepository.getTodayTokenCost()
-        val dbEstimatedCost = (dbTotalTokens.toDouble() / 1_000_000.0) * 1.5
-        return maxOf(getTodayEstimatedCostRmb(), dbEstimatedCost)
-    }
-
     /**
      * 检查是否超出每日消费上限（熔断判定）
      */
